@@ -119,13 +119,18 @@ def get_portfolio():
 async def background_daily_analysis():
     """Runs automatically every day to keep the dashboard constantly updated without human interaction"""
     while True:
-        # Default active watchlist tracked by the engine
-        symbols_to_track = ["AAPL", "NVDA", "MSFT", "SOXX", "SOXL", "ASTS", "RKLB", "IOT", "PLTR"]
-        try:
-            print(f"[{datetime.now()}] Executing Automated Daily Analysis Cron...")
-            engine.batch_analyze(symbols_to_track)
-        except Exception as e:
-            print(f"Automated analysis failed: {e}")
+        # Check if it is a weekend (5 = Saturday, 6 = Sunday)
+        current_day = datetime.now().weekday()
+        if current_day < 5:
+            # Default active watchlist tracked by the engine
+            symbols_to_track = ["AAPL", "NVDA", "MSFT", "SOXX", "SOXL", "ASTS", "RKLB", "IOT", "PLTR"]
+            try:
+                print(f"[{datetime.now()}] Executing Automated Daily Analysis Cron...")
+                engine.batch_analyze(symbols_to_track)
+            except Exception as e:
+                print(f"Automated analysis failed: {e}")
+        else:
+            print(f"[{datetime.now()}] Market is closed (Weekend). Skipping analysis to save API credits.")
         
         # Sleep for 12 hours between autonomous checks
         await asyncio.sleep(43200)
