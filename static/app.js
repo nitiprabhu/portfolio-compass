@@ -63,7 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
         for (const [symbol, groupRecs] of Object.entries(grouped)) {
             // Group Header Row
             const trHead = document.createElement('tr');
-            trHead.innerHTML = `<td colspan="7" style="background: rgba(255, 255, 255, 0.03); font-weight: 700; color: var(--primary); padding: 12px 16px;">
+            trHead.innerHTML = `<td colspan="9" style="background: rgba(255, 255, 255, 0.03); font-weight: 700; color: var(--primary); padding: 12px 16px;">
                 <i data-lucide="folder" style="width: 16px; height: 16px; display: inline-block; vertical-align: text-bottom; margin-right: 8px;"></i>
                 ${symbol}
             </td>`;
@@ -84,11 +84,33 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (dateStr === "Invalid Date") dateStr = rec.created_at; // Fallback
                 }
                 
+                const sentimentScore = rec.news_sentiment || 3;
+                let sentimentLabel = 'Neutral';
+                let sentimentClass = 'hold';
+                if (sentimentScore >= 4) { sentimentLabel = 'Bullish'; sentimentClass = 'buy'; }
+                else if (sentimentScore <= 2) { sentimentLabel = 'Bearish'; sentimentClass = 'sell'; }
+
+                let newsHtml = '';
+                try {
+                    const newsData = JSON.parse(rec.news_json || '[]');
+                    if (newsData.length > 0) {
+                        newsHtml = `<div class="sentiment-tooltip">
+                            <div class="tooltip-header"><i data-lucide="newspaper" style="width:12px"></i> Recent Headlines</div>
+                            ${newsData.map(n => `<a href="${n.link}" target="_blank" class="news-item">• ${n.title}</a>`).join('')}
+                        </div>`;
+                    }
+                } catch(e) { console.error("News parse error", e); }
+
                 tr.innerHTML = `
                     <td style="padding-left: 38px; color: var(--text-muted); font-size: 13px;">
                         ${dateStr}
                     </td>
                     <td><span class="badge ${badgeClass}">${rec.recommendation}</span></td>
+                    <td class="sentiment-cell">
+                        <span class="badge ${sentimentClass}" style="opacity: 0.8; font-size: 11px;">📰 ${sentimentLabel}</span>
+                        ${newsHtml}
+                    </td>
+                    <td style="max-width: 250px;"><div class="reflection-note">"${rec.reflection || 'No history yet.'}"</div></td>
                     <td>
                         <div title="${rec.conviction}%">
                             <div class="progress-bar">
@@ -100,7 +122,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td>$${rec.entry_price?.toFixed(2) || '--'}</td>
                     <td class="target-price">$${rec.target_price?.toFixed(2) || '--'}</td>
                     <td class="stop-loss">$${rec.stop_loss?.toFixed(2) || '--'}</td>
-                    <td>${rec.fundamentals_score}/13 | ${rec.technical_score}/5</td>
+                    <td>${rec.fundamentals_score}/${rec.technical_score}</td>
                 `;
                 tbody.appendChild(tr);
             });

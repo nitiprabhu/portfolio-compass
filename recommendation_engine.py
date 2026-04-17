@@ -14,6 +14,7 @@ Key changes from POC:
 import os
 import json
 import sqlite3
+import re
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict
 import yfinance as yf
@@ -58,8 +59,9 @@ class RecommendationDB:
                     entry_price REAL,
                     entry_date TIMESTAMP,
                     current_price REAL,
+                    peak_price REAL, -- Track highest price to calculate trailing stops
                     check_date TIMESTAMP,
-                    status TEXT,  -- OPEN, HIT_TARGET, HIT_STOP, CLOSED_EARLY
+                    status TEXT,
                     return_pct REAL,
                     FOREIGN KEY (recommendation_id) REFERENCES recommendations(id)
                 )
@@ -74,8 +76,8 @@ class RecommendationDB:
             cursor.execute("""
                 INSERT INTO recommendations 
                 (symbol, recommendation, conviction, entry_price, stop_loss, 
-                 target_price, fundamentals_score, technical_score, reasoning, risks)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 target_price, fundamentals_score, technical_score, reasoning, risks, news_sentiment, news_json, reflection)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 rec["symbol"],
                 rec["recommendation"],
@@ -86,7 +88,10 @@ class RecommendationDB:
                 rec["fundamentals_score"],
                 rec["technical_score"],
                 rec["reasoning"],
-                json.dumps(rec.get("risks", []))
+                json.dumps(rec.get("risks", [])),
+                rec.get("news_sentiment", 3),
+                rec.get("news_json", "[]"),
+                rec.get("reflection", "")
             ))
             conn.commit()
             return cursor.lastrowid
@@ -152,6 +157,14 @@ class RecommendationEngine:
     """Main engine that generates recommendations"""
     
     def __init__(self):
+        # Load .env file if it exists
+        if os.path.exists(".env"):
+            with open(".env") as f:
+                for line in f:
+                    if "=" in line:
+                        k, v = line.strip().split("=", 1)
+                        os.environ[k] = v
+        
         self.client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
         self.db = RecommendationDB()
     
@@ -190,6 +203,9 @@ class RecommendationEngine:
             fundamentals = self._get_fundamentals(symbol)
             technicals = self._get_technicals(symbol)
             market_regime = self._get_market_regime()
+            news = self._get_news(symbol)
+            history = self._get_performance_history(symbol)
+            port_stats = self._get_portfolio_stats()
             
             if "error" in fundamentals or "error" in technicals:
                 return None
@@ -199,9 +215,9 @@ class RecommendationEngine:
             tech_score = self._score_technicals(technicals, market_regime)
             
             # 4. Ask Claude for recommendation
-            prompt = self._build_prompt(symbol, fundamentals, technicals, fund_score, tech_score, market_regime)
+            prompt = self._build_prompt(symbol, fundamentals, technicals, fund_score, tech_score, market_regime, news, history, port_stats)
             response = self.client.messages.create(
-                model="claude-3-5-sonnet-20241022",
+                model="claude-haiku-4-5-20251001",
                 max_tokens=1500,
                 messages=[{"role": "user", "content": prompt}]
             )
@@ -215,7 +231,8 @@ class RecommendationEngine:
                 fund_score,
                 tech_score,
                 fundamentals,
-                technicals
+                technicals,
+                news  # Pass news here
             )
             
             return rec
@@ -228,7 +245,21 @@ class RecommendationEngine:
         """Fetch fundamentals"""
         try:
             ticker = yf.Ticker(symbol)
-            info = ticker.info
+            info = getattr(ticker, 'info', {})
+            
+            # Handle cases where info is empty or returns an error from Yahoo (common for ETFs)
+            if not info or 'quoteType' not in info:
+                # If price exists, we keep going with minimal data so technicals can drive the decision
+                hist = ticker.history(period="1d")
+                if not hist.empty:
+                    return {
+                        "symbol": symbol,
+                        "sector": "ETF/Fund",
+                        "quote_type": "ETF",
+                        "price": hist["Close"].iloc[-1],
+                        "earnings_date": "N/A"
+                    }
+                return {"error": f"Could not fetch fundamentals for {symbol}"}
             
             return {
                 "symbol": symbol,
@@ -245,10 +276,72 @@ class RecommendationEngine:
                 "fcf": info.get("freeCashflow"),
                 "market_cap": info.get("marketCap"),
                 "insider_ownership": info.get("insidersPercentHeld"),
+                "earnings_date": str(ticker.calendar.get("Earnings Date", ["N/A"])[0]) if ticker.calendar is not None and "Earnings Date" in ticker.calendar else "N/A"
             }
-        except:
-            return {"error": f"Could not fetch fundamentals for {symbol}"}
+        except Exception as e:
+            return {"error": f"Fundamentals error for {symbol}: {str(e)}"}
     
+    def _get_news(self, symbol: str) -> List[Dict]:
+        """Fetch latest news for sentiment analysis (Filtered for high relevance)"""
+        try:
+            ticker = yf.Ticker(symbol)
+            all_news = ticker.news
+            if not all_news: return []
+            
+            # Get company name for better filtering
+            company_name = ticker.info.get('longName', '').lower()
+            
+            filtered_news = []
+            for n in all_news:
+                title = n['content'].get('title', '').lower()
+                # ONLY keep if symbol or company name is in title AND it's not a generic market brief
+                is_relevant = symbol.lower() in title or (company_name and company_name in title)
+                is_noise = "morning brief" in title or "daily roundup" in title or "top stock" in title
+                
+                if is_relevant and not is_noise:
+                    filtered_news.append(n)
+            
+            return filtered_news[:5]
+        except:
+            return []
+
+    def _get_performance_history(self, symbol: str) -> str:
+        """Get past performance context for this symbol"""
+        try:
+            with sqlite3.connect(self.db.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT status, return_pct, check_date 
+                    FROM outcomes 
+                    WHERE symbol = ? 
+                    ORDER BY check_date DESC LIMIT 3
+                """, (symbol,))
+                rows = cursor.fetchall()
+                if not rows:
+                    return "No previous trading history for this asset."
+                
+                history = "RECENT HISTORY FOR THIS ASSET:\n"
+                for status, ret, date in rows:
+                    res = f"{ret:.1f}%" if ret is not None else "N/A"
+                    history += f"- Status: {status} | Return: {res} | Date: {date}\n"
+                return history
+        except:
+            return "History lookup failed."
+
+    def _get_portfolio_stats(self) -> str:
+        """Get high-level portfolio performance summary"""
+        try:
+            with sqlite3.connect(self.db.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT COUNT(*), AVG(return_pct) FROM outcomes WHERE status != 'OPEN'")
+                total, avg = cursor.fetchone()
+                if not total:
+                    return "Portfolio is brand new (0 closed trades)."
+                
+                return f"PORTFOLIO PERFORMANCE: {total} total closed trades with {avg or 0:.1f}% average return."
+        except:
+            return "Portfolio stats unavailable."
+
     def _get_technicals(self, symbol: str) -> Dict:
         """Fetch technical metrics"""
         try:
@@ -397,11 +490,13 @@ class RecommendationEngine:
         
         return max(0, min(5, score))
     
-    def _build_prompt(self, symbol: str, fund: Dict, tech: Dict, fund_score: int, tech_score: int, market_regime: str) -> str:
+    def _build_prompt(self, symbol: str, fund: Dict, tech: Dict, fund_score: int, tech_score: int, 
+                     market_regime: str, news: List[Dict], history: str, port_stats: str) -> str:
         """Build prompt for Claude"""
+        news_text = "\n".join([f"- {n['content']['title']}: {n['content'].get('summary', '')}" for n in news])
         
         return f"""
-Analyze {symbol} and provide a stock recommendation.
+Analyze {symbol} and provide a stock recommendation based on data, news, and your own past performance history.
 
 DATA:
 Sector: {fund.get('sector', 'Unknown')}
@@ -417,54 +512,51 @@ Technical Score: {tech_score}/5 (higher = better timing)
 - Current: ${tech.get('current_price', 0):.2f}
 - 50-day MA: ${tech.get('sma_50', 0):.2f}
 - 200-day MA: ${tech.get('sma_200', 0):.2f}
-- 52w High: ${tech.get('high_52w', 0):.2f}
-- 52w Low: ${tech.get('low_52w', 0):.2f}
 - RSI: {tech.get('rsi', 0):.1f} (below 30=oversold, above 70=overbought)
 - Volume Ratio: {tech.get('volume_ratio', 0):.2f}x average
 - Volatility: {tech.get('volatility', 0):.1f}%
 - 1Y Return: {tech.get('change_1y', 0):.1f}%
+- Earnings Date: {fund.get('earnings_date', 'N/A')}
+
+{history}
+{port_stats}
+
+RECENT NEWS HEADLINES:
+{news_text if news_text else "No recent news found."}
 
 MARKET CONTEXT:
 Market Regime: {market_regime}
-(In a BEAR market, be extremely conservative. In BULL, look for momentum.)
 
 RULES:
 1. Recommend only if fundamentals score > 9 AND technical score > 2
-2. If fundamentals good but technical bad: "BUY but wait"
-3. If fundamentals bad: "SELL" or "AVOID"
-4. Conviction = (fund_score/13 + tech_score/5) / 2 * 100, capped at 90%
+2. SELF-REFLECTION: Look at your history for this asset. If you previously lost money or were too early, adapt your current thinking. Be critical of yourself.
+3. Conviction = (fund_score/13 + tech_score/5) / 2 * 100, adjusted by news and self-reflection.
 
 RESPONSE FORMAT (EXACT):
-RECOMMENDATION: [BUY/SELL/HOLD/WAIT]
+RECOMMENDATION: [BUY/SELL/HOLD/WAIT/AVOID]
 CONVICTION: [0-100]
 ENTRY: $[price]
 STOP_LOSS: $[price]
 TARGET: $[price]
-FUND_SCORE: {fund_score}
-TECH_SCORE: {tech_score}
+NEWS_SENTIMENT: [1-5]
+REFLECTION: [1 sentence on what you learned from your history of this asset]
 
 REASONS (top 3 strengths):
-1. [reason]
-2. [reason]
-3. [reason]
+[reason]
 
 RISKS (top 2 concerns):
-1. [risk]
-2. [risk]
+[risk]
 
 OUTLOOK (1-2 sentences):
 [explanation]
-
-SIMILAR (if exists):
-This reminds of [stock] when [situation], which [outcome].
 
 ---
 
 Be conservative. Avoid losses > beat market. Explain clearly.
 """
-    
+
     def _parse_recommendation(self, symbol: str, text: str, fund_score: int, 
-                             tech_score: int, fund: Dict, tech: Dict) -> Dict:
+                             tech_score: int, fund: Dict, tech: Dict, news: List[Dict] = None) -> Dict:
         """Parse Claude's response into structured format"""
         
         # Extract values from response
@@ -486,30 +578,39 @@ Be conservative. Avoid losses > beat market. Explain clearly.
             "similar_pattern": ""
         }
         
-        # Simple parsing
+        # Robust parsing using RegEx
         for line in lines:
             if "RECOMMENDATION:" in line:
-                rec_dict["recommendation"] = line.split(":")[-1].strip().split()[0].upper()
+                rec_dict["recommendation"] = line.split(":")[-1].strip().split()[0].upper().replace("*", "")
             elif "CONVICTION:" in line:
-                try:
-                    rec_dict["conviction"] = int(line.split(":")[-1].strip().replace("%", ""))
-                except:
-                    pass
+                match = re.search(r"CONVICTION:\s*(\d+)", line)
+                if match: rec_dict["conviction"] = int(match.group(1))
             elif "ENTRY:" in line:
-                try:
-                    rec_dict["entry_price"] = float(line.split("$")[-1].strip())
-                except:
-                    pass
+                match = re.search(r"ENTRY:\s*\$?([\d,.]+)", line)
+                if match: rec_dict["entry_price"] = float(match.group(1).replace(",", ""))
             elif "STOP_LOSS:" in line:
-                try:
-                    rec_dict["stop_loss"] = float(line.split("$")[-1].strip())
-                except:
-                    pass
+                match = re.search(r"STOP_LOSS:\s*\$?([\d,.]+)", line)
+                if match: rec_dict["stop_loss"] = float(match.group(1).replace(",", ""))
             elif "TARGET:" in line:
-                try:
-                    rec_dict["target_price"] = float(line.split("$")[-1].strip())
-                except:
-                    pass
+                match = re.search(r"TARGET:\s*\$?([\d,.]+)", line)
+                if match: rec_dict["target_price"] = float(match.group(1).replace(",", ""))
+            elif "NEWS_SENTIMENT:" in line:
+                match = re.search(r"NEWS_SENTIMENT:\s*(\d+)", line)
+                if match: rec_dict["news_sentiment"] = int(match.group(1))
+            elif "REFLECTION:" in line:
+                rec_dict["reflection"] = line.split("REFLECTION:")[1].strip()
+        
+        # Store simplified news JSON for the UI
+        if news:
+            simplified_news = []
+            for n in news[:3]:
+                simplified_news.append({
+                    "title": n['content'].get('title', 'No Title'),
+                    "link": n['content'].get('canonicalUrl', {}).get('url', '#')
+                })
+            rec_dict["news_json"] = json.dumps(simplified_news)
+        else:
+            rec_dict["news_json"] = "[]"
         
         # Save to DB
         self.db.save_recommendation(rec_dict)
