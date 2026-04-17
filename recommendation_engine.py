@@ -129,6 +129,19 @@ class RecommendationDB:
                 "accuracy_percent": round(buy_accuracy, 1),
                 "average_return_percent": round(avg_return, 2)
             }
+            
+    def get_last_recommendation(self, symbol: str) -> Optional[Dict]:
+        """Check for the most recent recommendation for a symbol"""
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT * FROM recommendations 
+                WHERE symbol = ? 
+                ORDER BY created_at DESC LIMIT 1
+            """, (symbol,))
+            row = cursor.fetchone()
+            return dict(row) if row else None
 
 
 # ============================================================================
@@ -165,28 +178,37 @@ class RecommendationEngine:
         """
         
         try:
-            # Get data
+            # 1. Deduplication Check
+            last_rec = self.db.get_last_recommendation(symbol)
+            if last_rec:
+                created_at = datetime.strptime(last_rec["created_at"], "%Y-%m-%d %H:%M:%S")
+                if datetime.now() - created_at < timedelta(hours=24):
+                    print(f"Skipping {symbol}: Already analyzed recently ({last_rec['recommendation']}).")
+                    return last_rec
+
+            # 2. Get Data
             fundamentals = self._get_fundamentals(symbol)
             technicals = self._get_technicals(symbol)
+            market_regime = self._get_market_regime()
             
             if "error" in fundamentals or "error" in technicals:
                 return None
             
-            # Score
+            # 3. Score
             fund_score = self._score_fundamentals(fundamentals)
-            tech_score = self._score_technicals(technicals)
+            tech_score = self._score_technicals(technicals, market_regime)
             
-            # Ask Claude for recommendation
-            prompt = self._build_prompt(symbol, fundamentals, technicals, fund_score, tech_score)
+            # 4. Ask Claude for recommendation
+            prompt = self._build_prompt(symbol, fundamentals, technicals, fund_score, tech_score, market_regime)
             response = self.client.messages.create(
-                model="claude-opus-4-6",
+                model="claude-3-5-sonnet-20241022",
                 max_tokens=1500,
                 messages=[{"role": "user", "content": prompt}]
             )
             
             recommendation_text = response.content[0].text
             
-            # Parse Claude's response
+            # 5. Parse Claude's response
             rec = self._parse_recommendation(
                 symbol,
                 recommendation_text,
@@ -247,6 +269,19 @@ class RecommendationEngine:
             
             change_1y = ((current - hist["Close"].iloc[0]) / hist["Close"].iloc[0] * 100)
             
+            # RSI Calculation (14-period)
+            delta = hist['Close'].diff()
+            gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+            loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+            rs = gain / loss
+            rsi = 100 - (100 / (1 + rs))
+            current_rsi = rsi.iloc[-1] if not rsi.empty else 50
+
+            # Volume Ratio
+            avg_vol = hist['Volume'].tail(20).mean()
+            current_vol = hist['Volume'].iloc[-1]
+            vol_ratio = current_vol / avg_vol if avg_vol > 0 else 1.0
+
             return {
                 "symbol": symbol,
                 "current_price": current,
@@ -256,11 +291,30 @@ class RecommendationEngine:
                 "low_52w": low52,
                 "volatility": volatility,
                 "change_1y": change_1y,
+                "rsi": current_rsi,
+                "volume_ratio": vol_ratio,
                 "above_sma50": current > sma50,
                 "above_sma200": current > sma200 if sma200 else False,
             }
         except:
             return {"error": f"Could not fetch technicals for {symbol}"}
+
+    def _get_market_regime(self) -> str:
+        """Analyze overall market health via SPY"""
+        try:
+            spy = yf.Ticker("SPY")
+            hist = spy.history(period="6mo")
+            current = hist["Close"].iloc[-1]
+            sma50 = hist["Close"].tail(50).mean()
+            
+            if current > sma50 * 1.02:
+                return "BULL"
+            elif current < sma50 * 0.98:
+                return "BEAR"
+            else:
+                return "SIDEWAYS"
+        except:
+            return "SIDEWAYS"
     
     def _score_fundamentals(self, fund: Dict) -> int:
         """Score fundamentals 0-13 using dynamic sector-aware thresholds"""
@@ -312,26 +366,38 @@ class RecommendationEngine:
         
         return score
     
-    def _score_technicals(self, tech: Dict) -> int:
-        """Score technicals 0-5"""
+    def _score_technicals(self, tech: Dict, market_regime: str = "SIDEWAYS") -> int:
+        """Score technicals 0-5 with RSI and Volume awareness"""
         score = 0
         
         if tech.get("above_sma50"):
             score += 1
         if tech.get("above_sma200"):
             score += 1
-        if (tech.get("volatility") or float('inf')) < 60:
+            
+        # Volume Confirmation
+        vol_ratio = tech.get("volume_ratio", 1.0)
+        if vol_ratio > 1.2:
             score += 1
-        if (tech.get("change_1y") or 0) > 0:
+        elif vol_ratio < 0.7:
+            score -= 1 # Penalize low volume breakouts
+            
+        # RSI Awareness
+        rsi = tech.get("rsi", 50)
+        if 40 < rsi < 65: # Healthy momentum
             score += 1
-        cur = tech.get("current_price")
-        high = tech.get("high_52w")
-        if cur is not None and high is not None and cur < high * 0.95:
+        elif rsi > 75: # Overbought
+            score -= 2
+        elif rsi < 30: # Oversold - potentially good but risky
             score += 1
+
+        # Market Regime Penalty
+        if market_regime == "BEAR":
+            score -= 1
         
-        return score
+        return max(0, min(5, score))
     
-    def _build_prompt(self, symbol: str, fund: Dict, tech: Dict, fund_score: int, tech_score: int) -> str:
+    def _build_prompt(self, symbol: str, fund: Dict, tech: Dict, fund_score: int, tech_score: int, market_regime: str) -> str:
         """Build prompt for Claude"""
         
         return f"""
@@ -353,8 +419,14 @@ Technical Score: {tech_score}/5 (higher = better timing)
 - 200-day MA: ${tech.get('sma_200', 0):.2f}
 - 52w High: ${tech.get('high_52w', 0):.2f}
 - 52w Low: ${tech.get('low_52w', 0):.2f}
+- RSI: {tech.get('rsi', 0):.1f} (below 30=oversold, above 70=overbought)
+- Volume Ratio: {tech.get('volume_ratio', 0):.2f}x average
 - Volatility: {tech.get('volatility', 0):.1f}%
 - 1Y Return: {tech.get('change_1y', 0):.1f}%
+
+MARKET CONTEXT:
+Market Regime: {market_regime}
+(In a BEAR market, be extremely conservative. In BULL, look for momentum.)
 
 RULES:
 1. Recommend only if fundamentals score > 9 AND technical score > 2
