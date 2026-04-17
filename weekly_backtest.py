@@ -1,0 +1,112 @@
+import os
+import sqlite3
+import pandas as pd
+import yfinance as yf
+from recommendation_engine import RecommendationEngine
+
+class WeeklyBacktestEngine(RecommendationEngine):
+    def __init__(self):
+        super().__init__()
+        self.current_date = None
+        
+    def set_date(self, date_str):
+        self.current_date = date_str
+
+    def _get_technicals(self, symbol: str) -> dict:
+        try:
+            ticker = yf.Ticker(symbol)
+            hist = ticker.history(start="2024-01-01", end=self.current_date)
+            
+            if hist.empty:
+                return {"error": f"No data for {symbol}"}
+            
+            current = hist["Close"].iloc[-1]
+            sma50 = hist["Close"].tail(50).mean()
+            sma200 = hist["Close"].tail(200).mean() if len(hist) >= 200 else None
+            
+            high52 = hist["Close"].tail(252).max() if len(hist) >= 252 else hist["Close"].max()
+            low52 = hist["Close"].tail(252).min() if len(hist) >= 252 else hist["Close"].min()
+            
+            volatility = hist["Close"].pct_change().std() * (252 ** 0.5) * 100
+            
+            change_1y = ((current - hist["Close"].iloc[0]) / hist["Close"].iloc[0] * 100) if len(hist) > 0 else 0
+            
+            return {
+                "symbol": symbol,
+                "current_price": current,
+                "sma_50": sma50,
+                "sma_200": sma200,
+                "high_52w": high52,
+                "low_52w": low52,
+                "volatility": volatility,
+                "change_1y": change_1y,
+                "above_sma50": current > sma50,
+                "above_sma200": current > sma200 if sma200 else False,
+            }
+        except Exception as e:
+            return {"error": str(e)}
+
+if __name__ == "__main__":
+    symbol = "SOXL"
+    start_date = "2026-01-01"
+    end_date = "2026-04-18"
+    
+    print(f"--- WEEKLY BACKTEST: {symbol} ---")
+    print(f"Period: {start_date} to {end_date}")
+    
+    ticker = yf.Ticker(symbol)
+    hist = ticker.history(start=start_date, end=end_date)
+    
+    # Resample to weekly (every Friday)
+    weekly_dates = hist.resample('W-FRI').last().dropna().index.strftime('%Y-%m-%d').tolist()
+    
+    if not weekly_dates:
+        print("No trading data found for this period.")
+        exit(0)
+        
+    engine = WeeklyBacktestEngine()
+    
+    last_rec = None
+    trades = []
+    
+    import time
+    
+    print("Running analysis explicitly on a weekly basis...")
+    print("-" * 60)
+    
+    for date_str in weekly_dates:
+        # Check if the date is in the history safely
+        # Sometimes resample outputs dates that don't literally exist in index if market closed, but .last() grabs the last valid. 
+        # Actually it's safer to just run on the Fridays outputted since 'end=' date works either way in yfinance.
+        engine.set_date(date_str)
+        rec = engine.analyze_stock(symbol)
+        
+        if not rec:
+            continue
+            
+        current_action = rec.get("recommendation")
+        price = rec.get("entry_price")
+        
+        print(f"[{date_str}] Signal -> {current_action}")
+        print(f"   Price: ${price:.2f} | Conviction: {rec.get('conviction')}%")
+        print(f"   Scores -> Fund: {rec.get('fundamentals_score')}/13 | Tech: {rec.get('technical_score')}/5")
+        print(f"   Why: {rec.get('reasoning').split('REASONS')[0].strip()[-80:]}")
+        print("-" * 60)
+        
+        trades.append({
+            "date": date_str,
+            "action": current_action,
+            "price": price
+        })
+        
+        # Sleep slightly to avoid overwhelming rate limits
+        time.sleep(0.5)
+        
+    print("\n--- SUMMARY OF SIGNALS ---")
+    current_price = hist["Close"].iloc[-1]
+    print(f"Current Price (Apr 18): ${current_price:.2f}")
+    if trades:
+        first_buy = next((t for t in trades if t["action"] == "BUY"), None)
+        if first_buy:
+            pnl = ((current_price - first_buy["price"]) / first_buy["price"]) * 100
+            print(f"If bought on first BUY signal ({first_buy['date']} at ${first_buy['price']:.2f}): {pnl:.2f}% return.")

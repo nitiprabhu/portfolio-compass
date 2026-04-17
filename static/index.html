@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portfolio Compass</title>
+    <meta name="description" content="AI-Powered Stock Recommendations for Busy Professionals">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css?v=2">
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo">
+                <i data-lucide="compass" class="logo-icon"></i>
+                <span>Portfolio Compass</span>
+            </div>
+            
+            <nav class="main-nav">
+                <a href="#" class="nav-item active" id="nav-dashboard">
+                    <i data-lucide="home"></i> Dashboard
+                </a>
+                <a href="#" class="nav-item">
+                    <i data-lucide="trending-up"></i> Recommendations
+                </a>
+                <a href="#" class="nav-item" id="nav-portfolio">
+                    <i data-lucide="briefcase"></i> Portfolio
+                </a>
+                <a href="#" class="nav-item">
+                    <i data-lucide="settings"></i> Settings
+                </a>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <div class="user-profile">
+                    <div class="avatar">Pro</div>
+                    <div class="user-info">
+                        <span class="user-name">Premium Member</span>
+                        <span class="user-status">Active</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="top-header">
+                <div class="header-content">
+                    <h1>Dashboard</h1>
+                    <p class="subtitle">Your AI-powered portfolio insights</p>
+                </div>
+                <div class="header-actions">
+                    <button class="btn btn-primary" id="analyze-btn">
+                        <i data-lucide="cpu"></i> Run Analysis
+                    </button>
+                    <button class="btn btn-icon">
+                        <i data-lucide="bell"></i>
+                    </button>
+                </div>
+            </header>
+
+            <div id="view-dashboard" class="dashboard-grid">
+                <!-- Stats Row -->
+                <div class="stats-container">
+                    <div class="stat-card glass-panel">
+                        <div class="stat-icon-wrapper success">
+                            <i data-lucide="target"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3>Accuracy Rate</h3>
+                            <div class="stat-value" id="stat-accuracy">--%</div>
+                            <div class="stat-trend positive">+2.4% this month</div>
+                        </div>
+                    </div>
+                    <div class="stat-card glass-panel">
+                        <div class="stat-icon-wrapper warning">
+                            <i data-lucide="bar-chart-2"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3>Total Analyzed</h3>
+                            <div class="stat-value" id="stat-total">--</div>
+                            <div class="stat-trend">Recommendations</div>
+                        </div>
+                    </div>
+                    <div class="stat-card glass-panel">
+                        <div class="stat-icon-wrapper info">
+                            <i data-lucide="dollar-sign"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3>Avg Return</h3>
+                            <div class="stat-value" id="stat-return">--%</div>
+                            <div class="stat-trend positive">On Hit Targets</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Analysis Prompt Modal -->
+                <div id="analysis-modal" class="modal hidden">
+                    <div class="modal-content glass-panel">
+                        <div class="modal-header">
+                            <h2>New Analysis</h2>
+                            <button id="close-modal" class="btn-icon"><i data-lucide="x"></i></button>
+                        </div>
+                        <div class="modal-body">
+                            <p>Enter stock symbols to analyze (comma separated):</p>
+                            <input type="text" id="symbols-input" placeholder="e.g. AAPL, MSFT, NVDA" class="text-input">
+                            <button id="start-analysis" class="btn btn-primary w-full">Start Background Analysis</button>
+                            <p id="analysis-status" class="status-msg hidden"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Latest Recommendations -->
+                <div class="section-container glass-panel recommendations-section">
+                    <div class="section-header">
+                        <h2>Latest Recommendations</h2>
+                        <a href="#" class="view-all">View All <i data-lucide="arrow-right"></i></a>
+                    </div>
+                    
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Asset / Time</th>
+                                    <th>Action</th>
+                                    <th>Conviction</th>
+                                    <th>Entry</th>
+                                    <th>Target</th>
+                                    <th>Stop Loss</th>
+                                    <th>Fund/Tech Score</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recommendations-tbody">
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                        <div id="loading-state" class="loading-state">
+                            <div class="spinner"></div>
+                            <p>Loading recommendations...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Portfolio View -->
+            <div id="view-portfolio" class="dashboard-grid hidden">
+                <div class="stats-container">
+                    <div class="stat-card glass-panel">
+                        <div class="stat-icon-wrapper info">
+                            <i data-lucide="briefcase"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3>Total Invested</h3>
+                            <div class="stat-value" id="port-invested">$--</div>
+                        </div>
+                    </div>
+                    <div class="stat-card glass-panel">
+                        <div class="stat-icon-wrapper warning">
+                            <i data-lucide="pie-chart"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3>Total Value</h3>
+                            <div class="stat-value" id="port-value">$--</div>
+                        </div>
+                    </div>
+                    <div class="stat-card glass-panel">
+                        <div class="stat-icon-wrapper success">
+                            <i data-lucide="trending-up"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3>Overall PnL</h3>
+                            <div class="stat-value" id="port-pnl">--%</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section-container glass-panel recommendations-section">
+                    <div class="section-header">
+                        <h2>Active Holdings</h2>
+                    </div>
+                    
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Symbol</th>
+                                    <th>Entry Price</th>
+                                    <th>Live Price</th>
+                                    <th>% Return</th>
+                                    <th>Target</th>
+                                    <th>Stop Loss</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="portfolio-tbody">
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                        <div id="loading-state-port" class="loading-state">
+                            <div class="spinner"></div>
+                            <p>Loading live prices...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+    <script src="app.js?v=2"></script>
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+</html>
