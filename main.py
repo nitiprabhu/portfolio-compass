@@ -6,7 +6,9 @@ from typing import List
 import sqlite3
 import yfinance as yf
 import asyncio
-from datetime import datetime
+from datetime import datetime, timedelta
+import os
+import httpx
 
 from recommendation_engine import RecommendationEngine
 
@@ -116,23 +118,59 @@ def get_portfolio():
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
+def send_telegram_alert(message: str):
+    """Fires a message directly to your Telegram lock screen"""
+    token = os.environ.get("TELEGRAM_BOT_TOKEN")
+    chat_id = os.environ.get("TELEGRAM_CHAT_ID")
+    
+    if not token or not chat_id:
+        print("Telegram keys missing. Skipping alert.")
+        return
+        
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    payload = {"chat_id": chat_id, "text": message, "parse_mode": "HTML"}
+    try:
+        httpx.post(url, json=payload, timeout=10.0)
+    except Exception as e:
+        print(f"Telegram failed: {e}")
+
 async def background_daily_analysis():
     """Runs automatically every day to keep the dashboard constantly updated without human interaction"""
     while True:
-        # Check if it is a weekend (5 = Saturday, 6 = Sunday)
         current_day = datetime.now().weekday()
         if current_day < 5:
-            # Default active watchlist tracked by the engine
             symbols_to_track = ["AAPL", "NVDA", "MSFT", "SOXX", "SOXL", "ASTS", "RKLB", "IOT", "PLTR"]
             try:
                 print(f"[{datetime.now()}] Executing Automated Daily Analysis Cron...")
                 engine.batch_analyze(symbols_to_track)
+                
+                # Fetch fresh recommendations made in the last 15 minutes
+                time_threshold = (datetime.now() - timedelta(minutes=15)).strftime('%Y-%m-%d %H:%M:%S')
+                with sqlite3.connect(engine.db.db_path) as conn:
+                    cursor = conn.cursor()
+                    cursor.execute("""
+                        SELECT symbol, recommendation, conviction, entry_price, target_price, stop_loss 
+                        FROM recommendations 
+                        WHERE created_at > ? AND recommendation = 'BUY'
+                    """, (time_threshold,))
+                    fresh_buys = cursor.fetchall()
+                
+                if fresh_buys:
+                    alert_text = "🚨 <b>Portfolio Compass - New Signals</b> 🚨\n\n"
+                    for b in fresh_buys:
+                        sym, action, conv, entry, target, stop = b
+                        alert_text += f"📈 <b>{sym}</b>: {action} ({conv}% Conviction)\n"
+                        alert_text += f"💵 Entry: ${entry:.2f} | Tgt: ${target:.2f} | Stop: ${stop:.2f}\n\n"
+                    
+                    send_telegram_alert(alert_text)
+                    print("Dispatched successful Telegram alert!")
+                
             except Exception as e:
                 print(f"Automated analysis failed: {e}")
+                send_telegram_alert(f"⚠️ Engine Error: {e}")
         else:
             print(f"[{datetime.now()}] Market is closed (Weekend). Skipping analysis to save API credits.")
         
-        # Sleep for 12 hours between autonomous checks
         await asyncio.sleep(43200)
 
 @app.on_event("startup")
