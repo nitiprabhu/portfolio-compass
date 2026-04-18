@@ -63,6 +63,19 @@ with sqlite3.connect(engine.db.db_path) as conn:
 class AnalysisRequest(BaseModel):
     symbols: List[str]
 
+@app.get("/api/recommendations")
+def get_all_recommendations():
+    """Returns the 50 most recent recommendations — used by the Dashboard table."""
+    try:
+        with sqlite3.connect(engine.db.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM recommendations ORDER BY created_at DESC LIMIT 50")
+            rows = cursor.fetchall()
+            return {"status": "success", "data": [dict(ix) for ix in rows]}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
 @app.get("/api/watchlist")
 def get_watchlist():
     try:

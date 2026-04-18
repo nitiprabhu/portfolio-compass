@@ -486,7 +486,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderDiscoveryResults(results) {
         discoveryGrid.innerHTML = '';
-        results.forEach(rec => {
+        // Show only top 10 results based on recommendation confidence (assuming sorted by confidence)
+        const topResults = results.slice(0, 10);
+        topResults.forEach(rec => {
             const card = document.createElement('div');
             card.className = 'discovery-card';
             card.style = 'background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; transition: all 0.3s ease;';
@@ -494,7 +496,7 @@ document.addEventListener('DOMContentLoaded', () => {
             card.onmouseout = () => { card.style.background = 'rgba(255,255,255,0.02)'; card.style.borderColor = 'var(--border-color)'; };
 
             const badgeClass = rec.recommendation === 'BUY' ? 'buy' : (rec.recommendation === 'SELL' ? 'sell' : 'hold');
-            
+
             card.innerHTML = `
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
                     <div>
@@ -504,7 +506,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <span class="badge ${badgeClass}" style="padding: 4px 10px;">${rec.recommendation}</span>
                 </div>
                 <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px; line-height: 1.4;">
-                    ${rec.reasoning.substring(0, 150)}...
+                    ${rec.reasoning ? rec.reasoning.substring(0, 150) : ''}...
                 </div>
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <div style="font-size: 12px; color: var(--primary);">Conviction: ${rec.conviction}%</div>
