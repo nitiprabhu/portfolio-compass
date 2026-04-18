@@ -536,6 +536,27 @@ async def background_daily_analysis():
                 # Check for any new alerts after analysis
                 monitor_portfolio_alerts()
                 
+                # ── Critical Event Detector (Premium Alerts) ─────
+                print(f"[{now}] Scanning for Critical Portfolio Events...")
+                portfolio_res = get_portfolio()
+                if portfolio_res['status'] == 'success':
+                    for item in portfolio_res['data']:
+                        alert_msgs = []
+                        # 1. Stop Loss Proximity (< 2.5%)
+                        if item['dist_to_stop'] < 2.5 and item['alert'] != "🛑 STOP TRIGGERED":
+                            alert_msgs.append(f"🚨 <b>CRITICAL:</b> {item['symbol']} is only {item['dist_to_stop']:.1f}% away from Stop Loss!")
+                        
+                        # 2. Verdict Crash (TRIM required on high-value position)
+                        if item['verdict'] == "⚠️ TRIM" and item['pnl_pct'] > 5:
+                            alert_msgs.append(f"📉 <b>WARNING:</b> AI downgraded {item['symbol']} to TRIM while you are in profit. Consider locking in gains!")
+
+                        # 3. Target Proximity (> 95% to target)
+                        if item['dist_to_target'] < 3 and item['alert'] != "🎯 HIT TARGET":
+                            alert_msgs.append(f"🎯 <b>SOON:</b> {item['symbol']} is approaching target ({item['dist_to_target']:.1f}% left)!")
+
+                        if alert_msgs:
+                            send_telegram_alert("\n".join(alert_msgs))
+                
                 # ── Watchlist Paper Trading ─────
                 print(f"[{now}] Processing Watchlist & Paper Trading...")
                 with sqlite3.connect(engine.db.db_path) as conn:
