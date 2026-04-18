@@ -18,6 +18,7 @@ import re
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict
 import yfinance as yf
+import pandas as pd
 import anthropic
 
 # ============================================================================
@@ -402,6 +403,23 @@ class RecommendationEngine:
         except:
             return "Portfolio stats unavailable."
 
+    def _get_market_regime(self) -> str:
+        """Analyze overall market health via SPY"""
+        try:
+            spy = yf.Ticker("SPY")
+            hist = spy.history(period="6mo")
+            current = hist["Close"].iloc[-1]
+            sma50 = hist["Close"].tail(50).mean()
+            
+            if current > sma50 * 1.02:
+                return "BULL"
+            elif current < sma50 * 0.98:
+                return "BEAR"
+            else:
+                return "SIDEWAYS"
+        except:
+            return "SIDEWAYS"
+
     def _get_technicals(self, symbol: str) -> Dict:
         """Fetch technical metrics"""
         try:
@@ -448,6 +466,13 @@ class RecommendationEngine:
             for d, row in weekly_26.iterrows():
                 weekly_digest += f"{d.strftime('%Y-%m-%d')}: O:{row['Open']:.2f} H:{row['High']:.2f} L:{row['Low']:.2f} C:{row['Close']:.2f}\n"
 
+            # Consecutive direction (up/down days)
+            diff_series = hist['Close'].diff().fillna(0)
+            # Count consecutive up moves from most recent day backwards
+            consec_up = int((diff_series[::-1] > 0).cumprod().sum())
+            # Count consecutive down moves from most recent day backwards
+            consec_down = int((diff_series[::-1] < 0).cumprod().sum())
+
             return {
                 "symbol": symbol,
                 "current_price": current,
@@ -462,27 +487,12 @@ class RecommendationEngine:
                 "above_sma50": current > sma50,
                 "above_sma200": current > sma200 if sma200 else False,
                 "daily_digest": daily_digest,
-                "weekly_digest": weekly_digest
+                "weekly_digest": weekly_digest,
+                "consec_up": consec_up,
+                "consec_down": consec_down
             }
         except:
             return {"error": f"Could not fetch technicals for {symbol}"}
-
-    def _get_market_regime(self) -> str:
-        """Analyze overall market health via SPY"""
-        try:
-            spy = yf.Ticker("SPY")
-            hist = spy.history(period="6mo")
-            current = hist["Close"].iloc[-1]
-            sma50 = hist["Close"].tail(50).mean()
-            
-            if current > sma50 * 1.02:
-                return "BULL"
-            elif current < sma50 * 0.98:
-                return "BEAR"
-            else:
-                return "SIDEWAYS"
-        except:
-            return "SIDEWAYS"
     
     def _score_fundamentals(self, fund: Dict) -> int:
         """Score fundamentals 0-13 using dynamic sector-aware thresholds"""
@@ -535,33 +545,43 @@ class RecommendationEngine:
         return score
     
     def _score_technicals(self, tech: Dict, market_regime: str = "SIDEWAYS") -> int:
-        """Score technicals 0-5 with RSI and Volume awareness"""
+        """Score technicals 0-5 with RSI, Volume, and Relative Strength awareness"""
         score = 0
         
+        # Simple moving averages
         if tech.get("above_sma50"):
             score += 1
         if tech.get("above_sma200"):
             score += 1
-            
+        
         # Volume Confirmation
         vol_ratio = tech.get("volume_ratio", 1.0)
         if vol_ratio > 1.2:
             score += 1
         elif vol_ratio < 0.7:
-            score -= 1 # Penalize low volume breakouts
-            
+            score -= 1  # Penalize low‑volume breakouts
+        
         # RSI Awareness
         rsi = tech.get("rsi", 50)
-        if 40 < rsi < 65: # Healthy momentum
-            score += 1
-        elif rsi > 75: # Overbought
-            score -= 2
-        elif rsi < 30: # Oversold - potentially good but risky
-            score += 1
-
+        if 40 < rsi < 65:
+            score += 1  # Healthy momentum
+        elif rsi > 75:
+            score -= 2  # Overbought
+        elif rsi < 30:
+            score += 1  # Oversold (potentially good)
+        
         # Market Regime Penalty
         if market_regime == "BEAR":
             score -= 1
+        
+        # Relative Strength (RS) integration
+        rs_current = tech.get("rs_current")
+        rs_trend = tech.get("rs_trend")
+        if rs_current is not None:
+            if rs_current > 1 and rs_trend == "bullish":
+                score += 1  # Strong out‑performance vs SPY
+            elif rs_current < 1 and rs_trend == "bearish":
+                score -= 1  # Under‑performance vs SPY
         
         return max(0, min(5, score))
     
