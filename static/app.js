@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const navPortfolio = document.getElementById('nav-portfolio');
     const navBacktest = document.getElementById('nav-backtest');
     const navDiscovery = document.getElementById('nav-discovery');
+    const navWatchlist = document.getElementById('nav-watchlist');
 
     function showView(viewId) {
         document.querySelectorAll('[id^="view-"]').forEach(v => v.classList.add('hidden'));
@@ -27,7 +28,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 'view-dashboard': 'Dashboard',
                 'view-portfolio': 'Live Portfolio',
                 'view-backtest': 'Proof of History',
-                'view-discovery': 'Market Discovery'
+                'view-discovery': 'Market Discovery',
+                'view-watchlist': 'Model Watchlist'
             };
             if (viewNames[viewId]) headerTitle.textContent = viewNames[viewId];
         }
@@ -38,12 +40,14 @@ document.addEventListener('DOMContentLoaded', () => {
             fetchPastRuns();
             fetchBacktestResults();
         }
+        if (viewId === 'view-watchlist') fetchWatchlist();
     }
 
     navDashboard?.addEventListener('click', (e) => { e.preventDefault(); showView('view-dashboard'); });
     navPortfolio?.addEventListener('click', (e) => { e.preventDefault(); showView('view-portfolio'); });
     navBacktest?.addEventListener('click', (e) => { e.preventDefault(); showView('view-backtest'); });
     navDiscovery?.addEventListener('click', (e) => { e.preventDefault(); showView('view-discovery'); });
+    navWatchlist?.addEventListener('click', (e) => { e.preventDefault(); showView('view-watchlist'); });
 
 
     // DOM Elements
@@ -502,8 +506,22 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div style="font-size: 12px; color: var(--primary);">Conviction: ${rec.conviction}%</div>
                     <div style="font-size: 12px; font-family: monospace; color: var(--text-muted);">${rec.fundamentals_score}/${rec.technical_score}</div>
                 </div>
+                <button class="btn btn-secondary w-full add-to-watch-quick" data-symbol="${rec.symbol}" style="margin-top: 12px; padding: 6px; font-size: 11px; background: rgba(255,255,255,0.05);">
+                    <i data-lucide="eye" style="width: 12px; height: 12px;"></i> Watch & Paper Trade
+                </button>
             `;
             discoveryGrid.appendChild(card);
+        });
+
+        document.querySelectorAll('.add-to-watch-quick').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const sym = btn.dataset.symbol;
+                btn.disabled = true;
+                btn.innerHTML = '<i class="spinner" style="width:10px;height:10px"></i> Adding...';
+                await fetch(`${API_URL}/api/watchlist?symbol=${sym}`, { method: 'POST' });
+                btn.innerHTML = '<i data-lucide="check"></i> Added';
+                if(window.lucide) window.lucide.createIcons();
+            });
         });
     }
 
@@ -521,6 +539,71 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    // Watchlist Logic
+    const watchlistAddInput = document.getElementById('watchlist-add-input');
+    const addWatchlistBtn = document.getElementById('add-watchlist-btn');
+    const watchlistTbody = document.getElementById('watchlist-tbody');
+
+    async function fetchWatchlist() {
+        try {
+            const res = await fetch(`${API_URL}/api/watchlist`);
+            const data = await res.json();
+            if (data.status === 'success') {
+                renderWatchlist(data.data);
+            }
+        } catch (e) { console.error(e); }
+    }
+
+    function renderWatchlist(items) {
+        watchlistTbody.innerHTML = '';
+        if (items.length === 0) {
+            watchlistTbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted)">Watchlist is empty. Add symbols to track and paper trade.</td></tr>';
+            return;
+        }
+
+        items.forEach(item => {
+            const tr = document.createElement('tr');
+            const trade = item.trade;
+            const pnl = trade ? ((trade.current_value - trade.total_investment) / trade.total_investment * 100) : 0;
+            const pnlClass = pnl >= 0 ? "text-success" : "text-danger";
+            const pnlColor = pnl >= 0 ? "var(--success)" : "var(--danger)";
+
+            tr.innerHTML = `
+                <td style="font-weight: bold; color: var(--text-light);">${item.symbol}</td>
+                <td style="font-size: 12px; color: var(--text-muted);">${new Date(item.added_at).toLocaleDateString()}</td>
+                <td style="font-size: 12px; color: var(--text-muted);">${new Date(item.expires_at).toLocaleDateString()}</td>
+                <td>${trade ? `<span class="badge buy">LONG $100</span>` : `<span class="badge hold">No Signal</span>`}</td>
+                <td>${trade ? `$${trade.current_value.toFixed(2)}` : '--'}</td>
+                <td style="color: ${pnlColor}">${trade ? `${pnl > 0 ? '+' : ''}${pnl.toFixed(2)}%` : '--'}</td>
+                <td>
+                    <button class="btn-icon delete-watchlist" data-symbol="${item.symbol}" style="color: var(--danger);">
+                        <i data-lucide="trash-2" style="width: 14px;"></i>
+                    </button>
+                </td>
+            `;
+            watchlistTbody.appendChild(tr);
+        });
+
+        document.querySelectorAll('.delete-watchlist').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const symbol = btn.dataset.symbol;
+                await fetch(`${API_URL}/api/watchlist/${symbol}`, { method: 'DELETE' });
+                fetchWatchlist();
+            });
+        });
+
+        if(window.lucide) window.lucide.createIcons();
+    }
+
+    addWatchlistBtn?.addEventListener('click', async () => {
+        const symbol = watchlistAddInput.value.trim().toUpperCase();
+        if (!symbol) return;
+        
+        await fetch(`${API_URL}/api/watchlist?symbol=${symbol}`, { method: 'POST' });
+        watchlistAddInput.value = '';
+        fetchWatchlist();
+    });
 
     // Initial fetch to populate the dashboard on load
     fetchRecommendations();

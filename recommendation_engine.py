@@ -78,6 +78,30 @@ class RecommendationDB:
                 )
             """)
             
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS watchlist (
+                    id INTEGER PRIMARY KEY,
+                    symbol TEXT NOT NULL UNIQUE,
+                    added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    expires_at TIMESTAMP
+                )
+            """)
+
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS paper_trades (
+                    id INTEGER PRIMARY KEY,
+                    symbol TEXT NOT NULL,
+                    quantity REAL,
+                    entry_price REAL,
+                    current_price REAL,
+                    total_investment REAL,
+                    current_value REAL,
+                    status TEXT DEFAULT 'OPEN', -- OPEN, CLOSED
+                    opened_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    closed_at TIMESTAMP
+                )
+            """)
+            
             conn.commit()
     
     def save_recommendation(self, rec: Dict) -> int:

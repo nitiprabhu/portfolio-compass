@@ -206,6 +206,7 @@ def get_portfolio():
                 FROM recommendations r
                 LEFT JOIN outcomes o ON r.id = o.recommendation_id
                 WHERE r.recommendation = 'BUY' AND (o.status IS NULL OR o.status = 'OPEN')
+                AND r.symbol NOT IN (SELECT symbol FROM watchlist)
                 GROUP BY r.symbol
                 ORDER BY r.created_at DESC
             """)
@@ -281,6 +282,66 @@ def get_portfolio():
         }
             
         return {"status": "success", "data": portfolio_data, "summary": summary}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+@app.get("/api/watchlist")
+def get_watchlist():
+    try:
+        with sqlite3.connect(engine.db.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM watchlist ORDER BY added_at DESC")
+            items = [dict(row) for row in cursor.fetchall()]
+            
+            # Get paper trades for these symbols
+            cursor.execute("SELECT * FROM paper_trades WHERE status = 'OPEN'")
+            trades = {row['symbol']: dict(row) for row in cursor.fetchall()}
+            
+            for item in items:
+                item['trade'] = trades.get(item['symbol'])
+                
+            return {"status": "success", "data": items}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+@app.post("/api/watchlist")
+def add_to_watchlist(symbol: str):
+    try:
+        symbol = symbol.upper().strip()
+        with sqlite3.connect(engine.db.db_path) as conn:
+            cursor = conn.cursor()
+            # 3 month expiry
+            expires_at = (datetime.now() + timedelta(days=90)).strftime('%Y-%m-%d %H:%M:%S')
+            cursor.execute(
+                "INSERT OR IGNORE INTO watchlist (symbol, expires_at) VALUES (?, ?)",
+                (symbol, expires_at)
+            )
+            conn.commit()
+        return {"status": "success", "message": f"{symbol} added to watchlist"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+@app.delete("/api/watchlist/{symbol}")
+def remove_from_watchlist(symbol: str):
+    try:
+        symbol = symbol.upper().strip()
+        with sqlite3.connect(engine.db.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM watchlist WHERE symbol = ?", (symbol,))
+            conn.commit()
+        return {"status": "success", "message": f"{symbol} removed from watchlist"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+@app.get("/api/paper-trades")
+def get_paper_trades():
+    try:
+        with sqlite3.connect(engine.db.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM paper_trades ORDER BY opened_at DESC")
+            return {"status": "success", "data": [dict(row) for row in cursor.fetchall()]}
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
@@ -451,6 +512,45 @@ async def background_daily_analysis():
                 # Check for any new alerts after analysis
                 monitor_portfolio_alerts()
                 
+                # ── Watchlist Paper Trading ─────
+                print(f"[{now}] Processing Watchlist & Paper Trading...")
+                with sqlite3.connect(engine.db.db_path) as conn:
+                    cursor = conn.cursor()
+                    cursor.execute("SELECT symbol FROM watchlist")
+                    watch_symbols = [row[0] for row in cursor.fetchall()]
+                
+                for ws in watch_symbols:
+                    rec = engine.analyze_stock(ws, bypass_cache=True, save_to_db=True)
+                    if not rec: continue
+                    
+                    price = rec['entry_price']
+                    with sqlite3.connect(engine.db.db_path) as conn:
+                        cursor = conn.cursor()
+                        cursor.execute("SELECT id, quantity FROM paper_trades WHERE symbol = ? AND status = 'OPEN'", (ws,))
+                        active_trade = cursor.fetchone()
+                        
+                        if rec['recommendation'] == 'BUY':
+                            if not active_trade:
+                                # Start new paper trade with $100
+                                qty = 100.0 / price
+                                cursor.execute("""
+                                    INSERT INTO paper_trades (symbol, quantity, entry_price, current_price, total_investment, current_value, status)
+                                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                                """, (ws, qty, price, price, 100.0, 100.0, 'OPEN'))
+                                print(f"  PAPER BUY: {ws} at ${price} ($100 lot)")
+                        
+                        elif rec['recommendation'] == 'SELL' and active_trade:
+                            # Close position
+                            cursor.execute("""
+                                UPDATE paper_trades 
+                                SET status = 'CLOSED', closed_at = CURRENT_TIMESTAMP, current_price = ?
+                                WHERE id = ?
+                            """, (price, active_trade[0]))
+                            print(f"  PAPER SELL: {ws} at ${price}")
+                        
+                        # Update current price for all open watchlist positions
+                        cursor.execute("UPDATE paper_trades SET current_price = ?, current_value = quantity * ? WHERE symbol = ? AND status = 'OPEN'", (price, price, ws))
+                    
                 sector_warning = check_sector_concentration()
                 if sector_warning:
                     send_telegram_alert(sector_warning)
