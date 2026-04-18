@@ -23,11 +23,25 @@ from recommendation_engine import RecommendationEngine
 from weekly_backtest import run_backtest_job
 from scanner import MarketScanner
 
-app = FastAPI(title="Portfolio Compass API")
+from contextlib import asynccontextmanager
 
 # Global Discovery Cache
 scanner = MarketScanner()
 discovery_results = {"status": "idle", "data": [], "last_run": None}
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: Create background task for daily analysis
+    task = asyncio.create_task(background_daily_analysis())
+    yield
+    # Shutdown: Any cleanup if needed
+    task.cancel()
+    try:
+        await task
+    except asyncio.CancelledError:
+        pass
+
+app = FastAPI(title="Portfolio Compass API", lifespan=lifespan)
 
 
 app.add_middleware(
@@ -82,107 +96,6 @@ def get_all_recommendations():
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
-@app.get("/api/watchlist")
-def get_watchlist():
-    try:
-        with sqlite3.connect(engine.db.db_path) as conn:
-            conn.row_factory = sqlite3.Row
-            cursor = conn.cursor()
-            cursor.execute("SELECT * FROM watchlist ORDER BY added_at DESC")
-            items = [dict(row) for row in cursor.fetchall()]
-            
-            # Get paper trades for these symbols
-            cursor.execute("SELECT * FROM paper_trades WHERE status = 'OPEN'")
-            trades = {row['symbol']: dict(row) for row in cursor.fetchall()}
-            
-            for item in items:
-                item['trade'] = trades.get(item['symbol'])
-                
-            return {"status": "success", "data": items}
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
-
-@app.post("/api/watchlist")
-def add_to_watchlist(symbol: str):
-    try:
-        symbol = symbol.upper().strip()
-        with sqlite3.connect(engine.db.db_path) as conn:
-            cursor = conn.cursor()
-            # 3 month expiry
-            expires_at = (datetime.now() + timedelta(days=90)).strftime('%Y-%m-%d %H:%M:%S')
-            cursor.execute(
-                "INSERT OR IGNORE INTO watchlist (symbol, expires_at) VALUES (?, ?)",
-                (symbol, expires_at)
-            )
-            conn.commit()
-        return {"status": "success", "message": f"{symbol} added to watchlist"}
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
-
-@app.delete("/api/watchlist/{symbol}")
-def remove_from_watchlist(symbol: str):
-    try:
-        symbol = symbol.upper().strip()
-        with sqlite3.connect(engine.db.db_path) as conn:
-            cursor = conn.cursor()
-            cursor.execute("DELETE FROM watchlist WHERE symbol = ?", (symbol,))
-            conn.commit()
-        return {"status": "success", "message": f"{symbol} removed from watchlist"}
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
-
-@app.get("/api/cost-analysis")
-def get_cost_analysis():
-    try:
-        with sqlite3.connect(engine.db.db_path) as conn:
-            conn.row_factory = sqlite3.Row
-            cursor = conn.cursor()
-            
-            # Total stats
-            cursor.execute("SELECT COUNT(*), SUM(input_tokens), SUM(output_tokens), SUM(cost) FROM api_usage")
-            stats = cursor.fetchone()
-            total_calls = stats[0] or 0
-                
-            total_cost = stats[3] or 0
-            
-            # Today's stats
-            cursor.execute("SELECT SUM(cost) FROM api_usage WHERE timestamp > date('now')")
-            today_cost = cursor.fetchone()[0] or 0
-            
-            # Monthly projection
-            cursor.execute("SELECT (julianday('now') - julianday(MIN(timestamp))) + 1 FROM api_usage")
-            days_tracked_row = cursor.fetchone()
-            days_tracked = days_tracked_row[0] if days_tracked_row and days_tracked_row[0] else 1
-            avg_daily_cost = total_cost / days_tracked
-            monthly_projection = avg_daily_cost * 30
-            
-            # Recent usage
-            cursor.execute("SELECT * FROM api_usage ORDER BY timestamp DESC LIMIT 10")
-            recent_items = [dict(row) for row in cursor.fetchall()]
-            
-            return {
-                "status": "success",
-                "summary": {
-                    "total_calls": total_calls,
-                    "total_cost": round(total_cost, 4),
-                    "today_cost": round(today_cost, 4),
-                    "monthly_projection": round(monthly_projection, 2)
-                },
-                "history": recent_items
-            }
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
-
-@app.get("/api/paper-trades")
-def get_paper_trades():
-    try:
-        with sqlite3.connect(engine.db.db_path) as conn:
-            conn.row_factory = sqlite3.Row
-            cursor = conn.cursor()
-            cursor.execute("SELECT * FROM paper_trades ORDER BY opened_at DESC")
-            return {"status": "success", "data": [dict(row) for row in cursor.fetchall()]}
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
 
 @app.post("/api/analyze")
 def trigger_analysis(req: AnalysisRequest, background_tasks: BackgroundTasks):
@@ -855,9 +768,6 @@ async def background_daily_analysis():
         
         await asyncio.sleep(3600)  # Check every hour, but execute only once per day
 
-@app.on_event("startup")
-async def startup_event():
-    asyncio.create_task(background_daily_analysis())
 
 @app.get("/api/test-telegram")
 def test_telegram():
