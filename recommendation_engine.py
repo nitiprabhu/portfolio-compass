@@ -101,6 +101,17 @@ class RecommendationDB:
                     closed_at TIMESTAMP
                 )
             """)
+
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS api_usage (
+                    id INTEGER PRIMARY KEY,
+                    model TEXT NOT NULL,
+                    input_tokens INTEGER,
+                    output_tokens INTEGER,
+                    cost REAL,
+                    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
             
             conn.commit()
     
@@ -302,6 +313,7 @@ class RecommendationEngine:
             # 4. Ask Claude for recommendation
             prompt = self._build_prompt(symbol, fundamentals, technicals, fund_score, tech_score,
                                         regime, news, history, port_stats)
+            
             response = self.client.messages.create(
                 model="claude-haiku-4-5-20251001",
                 max_tokens=1500,
@@ -309,6 +321,22 @@ class RecommendationEngine:
             )
 
             recommendation_text = response.content[0].text
+            
+            # --- Cost Analysis Logging ---
+            try:
+                in_tokens = getattr(response.usage, 'input_tokens', 0)
+                out_tokens = getattr(response.usage, 'output_tokens', 0)
+                # Haiku Pricing: $0.25/MT input, $1.25/MT output
+                cost = (in_tokens * (0.25/1000000)) + (out_tokens * (1.25/1000000))
+                with sqlite3.connect(self.db.db_path) as conn:
+                    conn.execute(
+                        "INSERT INTO api_usage (model, input_tokens, output_tokens, cost) VALUES (?, ?, ?, ?)",
+                        (response.model, in_tokens, out_tokens, cost)
+                    )
+                    conn.commit()
+            except Exception as cost_err:
+                print(f"Usage logging error: {cost_err}")
+            # -----------------------------
 
             # 5. Parse Claude's response
             rec = self._parse_recommendation(

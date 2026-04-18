@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const navBacktest = document.getElementById('nav-backtest');
     const navDiscovery = document.getElementById('nav-discovery');
     const navWatchlist = document.getElementById('nav-watchlist');
+    const navCosts = document.getElementById('nav-costs');
 
     function showView(viewId) {
         document.querySelectorAll('[id^="view-"]').forEach(v => v.classList.add('hidden'));
@@ -29,7 +30,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 'view-portfolio': 'Live Portfolio',
                 'view-backtest': 'Proof of History',
                 'view-discovery': 'Market Discovery',
-                'view-watchlist': 'Model Watchlist'
+                'view-watchlist': 'Model Watchlist',
+                'view-costs': 'Cost Analysis'
             };
             if (viewNames[viewId]) headerTitle.textContent = viewNames[viewId];
         }
@@ -41,6 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
             fetchBacktestResults();
         }
         if (viewId === 'view-watchlist') fetchWatchlist();
+        if (viewId === 'view-costs') fetchCostAnalysis();
     }
 
     navDashboard?.addEventListener('click', (e) => { e.preventDefault(); showView('view-dashboard'); });
@@ -48,6 +51,7 @@ document.addEventListener('DOMContentLoaded', () => {
     navBacktest?.addEventListener('click', (e) => { e.preventDefault(); showView('view-backtest'); });
     navDiscovery?.addEventListener('click', (e) => { e.preventDefault(); showView('view-discovery'); });
     navWatchlist?.addEventListener('click', (e) => { e.preventDefault(); showView('view-watchlist'); });
+    navCosts?.addEventListener('click', (e) => { e.preventDefault(); showView('view-costs'); });
 
 
     // DOM Elements
@@ -618,6 +622,48 @@ document.addEventListener('DOMContentLoaded', () => {
         watchlistAddInput.value = '';
         fetchWatchlist();
     });
+
+    // Cost Analysis Logic
+    const costTotalSpent = document.getElementById('cost-total-spent');
+    const costToday = document.getElementById('cost-today');
+    const costProjection = document.getElementById('cost-projection');
+    const costTotalCalls = document.getElementById('cost-total-calls');
+    const costsTbody = document.getElementById('costs-tbody');
+
+    async function fetchCostAnalysis() {
+        try {
+            const res = await fetch(`${API_URL}/api/cost-analysis`);
+            const data = await res.json();
+            if (data.status === 'success') {
+                renderCostAnalysis(data);
+            }
+        } catch (e) { console.error(e); }
+    }
+
+    function renderCostAnalysis(data) {
+        costTotalSpent.textContent = `$${data.summary.total_cost.toFixed(4)}`;
+        costToday.textContent = `$${data.summary.today_cost.toFixed(4)}`;
+        costProjection.textContent = `$${data.summary.monthly_projection.toFixed(2)}`;
+        costTotalCalls.textContent = data.summary.total_calls;
+
+        costsTbody.innerHTML = '';
+        if (data.history.length === 0) {
+            costsTbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted)">No usage recorded yet. Run analysis to see costs.</td></tr>';
+            return;
+        }
+
+        data.history.forEach(item => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td style="font-size: 11px; color: var(--text-muted);">${new Date(item.timestamp).toLocaleString()}</td>
+                <td style="font-family: monospace; font-size: 11px;">${item.model}</td>
+                <td>${item.input_tokens}</td>
+                <td>${item.output_tokens}</td>
+                <td style="font-weight: bold; color: var(--text-main);">$${item.cost.toFixed(4)}</td>
+            `;
+            costsTbody.appendChild(tr);
+        });
+    }
 
     // Initial fetch to populate the dashboard on load
     fetchRecommendations();

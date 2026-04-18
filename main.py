@@ -358,6 +358,47 @@ def remove_from_watchlist(symbol: str):
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
+@app.get("/api/cost-analysis")
+def get_cost_analysis():
+    try:
+        with sqlite3.connect(engine.db.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            
+            # Total stats
+            cursor.execute("SELECT COUNT(*), SUM(input_tokens), SUM(output_tokens), SUM(cost) FROM api_usage")
+            stats = cursor.fetchone()
+            total_calls = stats[0] or 0
+            total_cost = stats[3] or 0
+            
+            # Today's stats
+            cursor.execute("SELECT SUM(cost) FROM api_usage WHERE timestamp > date('now')")
+            today_cost = cursor.fetchone()[0] or 0
+            
+            # Monthly projection
+            cursor.execute("SELECT (julianday('now') - julianday(MIN(timestamp))) + 1 FROM api_usage")
+            days_tracked_row = cursor.fetchone()
+            days_tracked = days_tracked_row[0] if days_tracked_row and days_tracked_row[0] else 1
+            avg_daily_cost = total_cost / days_tracked
+            monthly_projection = avg_daily_cost * 30
+            
+            # Recent usage
+            cursor.execute("SELECT * FROM api_usage ORDER BY timestamp DESC LIMIT 10")
+            recent_items = [dict(row) for row in cursor.fetchall()]
+            
+            return {
+                "status": "success",
+                "summary": {
+                    "total_calls": total_calls,
+                    "total_cost": round(total_cost, 4),
+                    "today_cost": round(today_cost, 4),
+                    "monthly_projection": round(monthly_projection, 2)
+                },
+                "history": recent_items
+            }
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
 @app.get("/api/paper-trades")
 def get_paper_trades():
     try:
