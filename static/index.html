@@ -163,7 +163,7 @@
             </div> <!-- End dashboard-grid -->
         </div> <!-- End view-dashboard -->
 
-            <div id="view-portfolio" class="portfolio-grid hidden">
+            <div id="view-portfolio" class="hidden">
                 <div class="section-container glass-panel">
                     <div class="section-header" style="justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255, 255, 255, 0.1); padding-bottom: 20px;">
                         <div>
@@ -273,7 +273,7 @@
             </div> <!-- End Backtest View -->
 
             <!-- Discovery View (Hidden by default) -->
-            <div id="view-discovery">
+            <div id="view-discovery" class="hidden">
                  <div class="section-container glass-panel">
                     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px;">
                         <div>
@@ -303,12 +303,12 @@
                 <div class="section-container glass-panel">
                     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px;">
                         <div>
-                            <h2 style="font-size: 18px; font-weight: 600; color: var(--text-main); margin-bottom: 4px;">Model Watchlist (90 Days)</h2>
-                            <p style="color: var(--text-muted); font-size: 13px;">Simulated $100 positions based on daily AI recommendations</p>
+                            <h2 style="font-size: 18px; font-weight: 600; color: var(--text-main); margin-bottom: 4px;">Model Watchlist</h2>
+                            <p style="color: var(--text-muted); font-size: 13px;">90-day active monitoring with automated paper trading</p>
                         </div>
                         <div style="display: flex; gap: 8px;">
                             <input type="text" id="watchlist-add-input" class="text-input" placeholder="Symbol (e.g. AMD)" style="width: 150px; padding: 6px 12px; font-size: 13px;">
-                            <button class="btn btn-primary" id="add-watchlist-btn" style="padding: 8px 16px; font-size: 13px;">
+                            <button class="btn btn-primary" id="watchlist-add-btn" style="padding: 8px 16px; font-size: 13px;">
                                 <i data-lucide="plus"></i> Add
                             </button>
                         </div>
@@ -319,12 +319,11 @@
                             <thead>
                                 <tr>
                                     <th>Symbol</th>
-                                    <th>Added At</th>
-                                    <th>Expires At</th>
-                                    <th>Paper Position</th>
-                                    <th>Current Value</th>
-                                    <th>P/L</th>
-                                    <th>Actions</th>
+                                    <th>Since</th>
+                                    <th>Expires</th>
+                                    <th>AI Signal</th>
+                                    <th>Paper P&L</th>
+                                    <th>Action</th>
                                 </tr>
                             </thead>
                             <tbody id="watchlist-tbody">
@@ -386,7 +385,7 @@
 
         </main>
     </div>
-    <script src="app.js?v=3"></script>
+    <script src="app.js?v=4"></script>
     <script>
         lucide.createIcons();
     </script>

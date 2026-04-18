@@ -1,0 +1,1089 @@
+/Users/nithish-prabhu/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+/Users/nithish-prabhu/Downloads/trading/main.py:685: DeprecationWarning: 
+        on_event is deprecated, use lifespan event handlers instead.
+
+        Read more about it in the
+        [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+        
+  @app.on_event("startup")
+INFO:     Will watch for changes in these directories: ['/Users/nithish-prabhu/Downloads/trading']
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [88173] using StatReload
+/Users/nithish-prabhu/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+INFO:     Started server process [88202]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+[2026-04-19 02:22:24.998677] Processing Weekly Sunday Status...
+✅ Telegram alert sent successfully!
+INFO:     127.0.0.1:63910 - "GET /api/portfolio HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63922 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63922 - "GET /style.css?v=2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "GET /app.js?v=4 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "GET /api/recommendations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63922 - "GET /api/accuracy HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63922 - "GET /api/cost-analysis HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63922 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63922 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63922 - "GET /api/backtests HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "GET /api/backtest/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "GET /api/backtests HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "GET /api/portfolio HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "POST /api/discover/run HTTP/1.1" 200 OK
+Initializing Deep Market Scan (Mid & Small Caps)...
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+Universe identified: 400 Mid-Caps, 603 Small-Caps.
+Filtering 1003 stocks for activity leaders...
+  Downloading activity for batch 1 (100 tickers)...
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+  Downloading activity for batch 2 (100 tickers)...
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+  Downloading activity for batch 3 (100 tickers)...
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+  Downloading activity for batch 4 (100 tickers)...
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+  Downloading activity for batch 5 (100 tickers)...
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+  Downloading activity for batch 6 (100 tickers)...
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+  Downloading activity for batch 7 (100 tickers)...
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+  Downloading activity for batch 8 (100 tickers)...
+  Downloading activity for batch 9 (100 tickers)...
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+  Downloading activity for batch 10 (100 tickers)...
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+  Downloading activity for batch 11 (3 tickers)...
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+Active Universe focused to 200 leaders.
+Running Momentum Hunter (60d trend)...
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+Top 5 candidates identified: ['CVBF', 'SNDR', 'FFBC', 'MXL', 'MWA']
+  AI Validating: CVBF...
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65317 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65317 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+  Sending Telegram Alert for CVBF...
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65317 - "GET /api/discover HTTP/1.1" 200 OK
+  AI Validating: SNDR...
+INFO:     127.0.0.1:65317 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65317 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65317 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+  Sending Telegram Alert for SNDR...
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65317 - "GET /api/discover HTTP/1.1" 200 OK
+  AI Validating: FFBC...
+INFO:     127.0.0.1:65317 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65317 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65317 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65317 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65317 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+  Sending Telegram Alert for FFBC...
+  AI Validating: MXL...
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65439 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65439 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "GET /api/backtests HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65439 - "GET /api/backtest/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65439 - "GET /api/backtests HTTP/1.1" 200 OK
+  Sending Telegram Alert for MXL...
+INFO:     127.0.0.1:65439 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+  AI Validating: MWA...
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65439 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65439 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65439 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "GET / HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:63924 - "GET /app.js?v=4 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:63924 - "GET /api/recommendations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65439 - "GET /api/accuracy HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+  Sending Telegram Alert for MWA...
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49341 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49341 - "GET /style.css?v=2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49344 - "GET /app.js?v=4 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49352 - "GET /api/accuracy HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49350 - "GET /api/recommendations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49350 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49444 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49444 - "GET /api/discover HTTP/1.1" 200 OK
+WARNING:  StatReload detected changes in 'scanner.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [88202]
+/Users/nithish-prabhu/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+INFO:     Started server process [90624]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+[2026-04-19 02:27:37.525380] Processing Weekly Sunday Status...
+✅ Telegram alert sent successfully!
+INFO:     127.0.0.1:49464 - "POST /api/discover/run HTTP/1.1" 200 OK
+Initializing Deep Market Scan (Mid & Small Caps)...
+Universe identified: 400 Mid-Caps, 603 Small-Caps.
+Filtering 1003 stocks for activity leaders...
+  Downloading activity for batch 1 (100 tickers)...
+  Downloading activity for batch 2 (100 tickers)...
+  Downloading activity for batch 3 (100 tickers)...
+  Downloading activity for batch 4 (100 tickers)...
+  Downloading activity for batch 5 (100 tickers)...
+  Downloading activity for batch 6 (100 tickers)...
+  Downloading activity for batch 7 (100 tickers)...
+  Downloading activity for batch 8 (100 tickers)...
+  Downloading activity for batch 9 (100 tickers)...
+  Downloading activity for batch 10 (100 tickers)...
+  Downloading activity for batch 11 (3 tickers)...
+Active Universe focused to 200 leaders.
+Running Momentum Hunter (60d trend)...
+Top 10 candidates identified: ['CVBF', 'SNDR', 'FFBC', 'MXL', 'MWA', 'PRIM', 'ORA', 'ALV', 'WMS', 'HIMS']
+  AI Validating: CVBF...
+  Sending Telegram Alert for CVBF...
+  AI Validating: SNDR...
+INFO:     127.0.0.1:50857 - "GET /api/portfolio HTTP/1.1" 200 OK
+  Sending Telegram Alert for SNDR...
+  AI Validating: FFBC...
+  Sending Telegram Alert for FFBC...
+  AI Validating: MXL...
+  Sending Telegram Alert for MXL...
+  AI Validating: MWA...
+INFO:     127.0.0.1:50992 - "GET / HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:50992 - "GET /app.js?v=4 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:50992 - "GET /api/recommendations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50994 - "GET /api/accuracy HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50994 - "GET /api/cost-analysis HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50994 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50994 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50994 - "GET /api/backtests HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51000 - "GET /api/backtest/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51000 - "GET /api/backtests HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51000 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51000 - "GET /api/discover HTTP/1.1" 200 OK
+  Sending Telegram Alert for MWA...
+INFO:     127.0.0.1:51000 - "GET /api/discover HTTP/1.1" 200 OK
+  AI Validating: PRIM...
+INFO:     127.0.0.1:51000 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51000 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51000 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51000 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51000 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51000 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51000 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51000 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51000 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51000 - "GET /api/discover HTTP/1.1" 200 OK
+  Sending Telegram Alert for PRIM...
+INFO:     127.0.0.1:51000 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51000 - "GET /api/discover HTTP/1.1" 200 OK
+  AI Validating: ORA...
+INFO:     127.0.0.1:51000 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51000 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51000 - "GET /api/backtests HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51021 - "GET /api/backtest/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51021 - "GET /api/backtests HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51021 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51021 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51021 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51021 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51021 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51021 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51021 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51021 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51021 - "GET /api/discover HTTP/1.1" 200 OK
+  Sending Telegram Alert for ORA...
+INFO:     127.0.0.1:51021 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51021 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51021 - "GET /api/discover HTTP/1.1" 200 OK
+  AI Validating: ALV...
+INFO:     127.0.0.1:51021 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51021 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51092 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51092 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51092 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51021 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51021 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51021 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51092 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51092 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51021 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51092 - "GET /api/discover HTTP/1.1" 200 OK
+  Sending Telegram Alert for ALV...
+  AI Validating: WMS...
+INFO:     127.0.0.1:51092 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51021 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51092 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51092 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51021 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51092 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51092 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51021 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51092 - "GET /api/discover HTTP/1.1" 200 OK
+  Sending Telegram Alert for WMS...
+INFO:     127.0.0.1:51092 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51021 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51092 - "GET /api/discover HTTP/1.1" 200 OK
+  AI Validating: HIMS...
+INFO:     127.0.0.1:51092 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51021 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51092 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51092 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51021 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51092 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51092 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51021 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51092 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51092 - "GET / HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:51092 - "GET /app.js?v=4 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:51092 - "GET /api/recommendations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51021 - "GET /api/accuracy HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51021 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51021 - "GET /api/discover HTTP/1.1" 200 OK
+  Sending Telegram Alert for HIMS...
+INFO:     127.0.0.1:51021 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51021 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51232 - "GET /api/cost-analysis HTTP/1.1" 200 OK
+WARNING:  StatReload detected changes in 'main.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [90624]
+/Users/nithish-prabhu/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+INFO:     Started server process [93533]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'recommendation_engine.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [93533]
+[2026-04-19 02:33:08.906619] Processing Weekly Sunday Status...
+✅ Telegram alert sent successfully!
+/Users/nithish-prabhu/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+INFO:     Started server process [93733]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'recommendation_engine.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [93733]
+[2026-04-19 02:33:31.716887] Processing Weekly Sunday Status...
+✅ Telegram alert sent successfully!
+/Users/nithish-prabhu/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+INFO:     Started server process [93940]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+[2026-04-19 02:33:58.674248] Processing Weekly Sunday Status...
+✅ Telegram alert sent successfully!
+INFO:     127.0.0.1:51688 - "GET / HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:51688 - "GET /app.js?v=4 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51688 - "GET /api/recommendations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51690 - "GET /api/accuracy HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51769 - "GET /api/portfolio HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51769 - "GET /api/backtests HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51775 - "GET /api/backtest/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51775 - "GET /api/backtests HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51775 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51779 - "POST /api/watchlist?symbol=MWA HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51779 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51779 - "POST /api/watchlist?symbol=PRIM HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51779 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51779 - "POST /api/watchlist?symbol=ALV HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51779 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51779 - "POST /api/watchlist?symbol=HIMS HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51779 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51802 - "POST /api/watchlist?symbol=CVBF HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51802 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51802 - "POST /api/watchlist?symbol=SNDR HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51802 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51802 - "POST /api/watchlist?symbol=FFBC HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51802 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51802 - "POST /api/watchlist?symbol=MXL HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51802 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51802 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51802 - "GET / HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:51802 - "GET /app.js?v=4 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:51802 - "GET /api/recommendations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51823 - "GET /api/accuracy HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51823 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51823 - "GET /api/portfolio HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51828 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51828 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51828 - "POST /api/watchlist?symbol=MWA HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51828 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51828 - "POST /api/watchlist?symbol=ALV HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51828 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51828 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51828 - "GET / HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:51828 - "GET /app.js?v=4 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:51828 - "GET /api/recommendations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51837 - "GET /api/accuracy HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51837 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51837 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51921 - "POST /api/watchlist?symbol=MWA HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51921 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51926 - "POST /api/watchlist?symbol=ALV HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51926 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51926 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51937 - "GET /api/portfolio HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51947 - "GET /api/cost-analysis HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51949 - "GET /api/watchlist HTTP/1.1" 200 OK
+WARNING:  StatReload detected changes in 'recommendation_engine.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [93940]
+/Users/nithish-prabhu/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+INFO:     Started server process [95503]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+[2026-04-19 02:37:17.278285] Processing Weekly Sunday Status...
+✅ Telegram alert sent successfully!
+INFO:     127.0.0.1:52249 - "GET / HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:52249 - "GET /app.js?v=4 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:52249 - "GET /api/recommendations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52251 - "GET /api/accuracy HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52251 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52251 - "GET /api/cost-analysis HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52251 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52251 - "POST /api/watchlist?symbol=ALV HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52251 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52251 - "POST /api/watchlist?symbol=PRIM HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52251 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52251 - "POST /api/watchlist?symbol=WMS HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52251 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52251 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52379 - "GET /api/recommendations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52381 - "GET /api/accuracy HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52381 - "GET /api/portfolio HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52381 - "GET /api/backtests HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52390 - "GET /api/backtest/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52390 - "GET /api/backtests HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52390 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52390 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52491 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52491 - "GET /style.css?v=2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52493 - "GET /app.js?v=4 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52493 - "GET /api/recommendations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52491 - "GET /api/accuracy HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52491 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52498 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52498 - "GET /api/backtests HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52502 - "GET /api/backtest/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52502 - "GET /api/backtests HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/cost-analysis HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "POST /api/discover/run HTTP/1.1" 200 OK
+Initializing Deep Market Scan (Mid & Small Caps)...
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+Universe identified: 400 Mid-Caps, 603 Small-Caps.
+Filtering 1003 stocks for activity leaders...
+  Downloading activity for batch 1 (100 tickers)...
+INFO:     127.0.0.1:52681 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/portfolio HTTP/1.1" 200 OK
+  Downloading activity for batch 2 (100 tickers)...
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+  Downloading activity for batch 3 (100 tickers)...
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+  Downloading activity for batch 4 (100 tickers)...
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+  Downloading activity for batch 5 (100 tickers)...
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+  Downloading activity for batch 6 (100 tickers)...
+  Downloading activity for batch 7 (100 tickers)...
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+  Downloading activity for batch 8 (100 tickers)...
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+  Downloading activity for batch 9 (100 tickers)...
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+  Downloading activity for batch 10 (100 tickers)...
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+  Downloading activity for batch 11 (3 tickers)...
+Active Universe focused to 200 leaders.
+Running Momentum Hunter (60d trend)...
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+Top 10 candidates identified: ['CVBF', 'SNDR', 'FFBC', 'MXL', 'MWA', 'PRIM', 'ORA', 'ALV', 'WMS', 'HIMS']
+  AI Validating: CVBF...
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+  Sending Telegram Alert for CVBF...
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+  AI Validating: SNDR...
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+  Sending Telegram Alert for SNDR...
+  AI Validating: FFBC...
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+  Sending Telegram Alert for FFBC...
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+  AI Validating: MXL...
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+  Sending Telegram Alert for MXL...
+  AI Validating: MWA...
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+  Sending Telegram Alert for MWA...
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+  AI Validating: PRIM...
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+  Sending Telegram Alert for PRIM...
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+  AI Validating: ORA...
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+  Sending Telegram Alert for ORA...
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+  AI Validating: ALV...
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+  Sending Telegram Alert for ALV...
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+  AI Validating: WMS...
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+  Sending Telegram Alert for WMS...
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+  AI Validating: HIMS...
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+  Sending Telegram Alert for HIMS...
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54318 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54318 - "GET /api/portfolio HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54318 - "GET /api/cost-analysis HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54396 - "GET /api/watchlist HTTP/1.1" 200 OK
+WARNING:  StatReload detected changes in 'recommendation_engine.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [95503]
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/multiprocessing/spawn.py", line 116, in spawn_main
+    exitcode = _main(fd, parent_sentinel)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/multiprocessing/spawn.py", line 125, in _main
+    prepare(preparation_data)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/multiprocessing/spawn.py", line 236, in prepare
+    _fixup_main_from_path(data['init_main_from_path'])
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/multiprocessing/spawn.py", line 287, in _fixup_main_from_path
+    main_content = runpy.run_path(main_path,
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 267, in run_path
+    code, fname = _get_code_from_file(run_name, path_name)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 242, in _get_code_from_file
+    code = compile(f.read(), fname, 'exec')
+  File "/Users/nithish-prabhu/Downloads/trading/main.py", line 389
+    <<<<<<< HEAD
+IndentationError: unexpected unindent
+WARNING:  StatReload detected changes in 'main.py'. Reloading...
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/multiprocessing/spawn.py", line 116, in spawn_main
+    exitcode = _main(fd, parent_sentinel)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/multiprocessing/spawn.py", line 125, in _main
+    prepare(preparation_data)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/multiprocessing/spawn.py", line 236, in prepare
+    _fixup_main_from_path(data['init_main_from_path'])
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/multiprocessing/spawn.py", line 287, in _fixup_main_from_path
+    main_content = runpy.run_path(main_path,
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 267, in run_path
+    code, fname = _get_code_from_file(run_name, path_name)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 242, in _get_code_from_file
+    code = compile(f.read(), fname, 'exec')
+  File "/Users/nithish-prabhu/Downloads/trading/main.py", line 695
+    <<<<<<< HEAD
+IndentationError: unexpected unindent
+WARNING:  StatReload detected changes in 'recommendation_engine.py'. Reloading...
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/multiprocessing/spawn.py", line 116, in spawn_main
+    exitcode = _main(fd, parent_sentinel)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/multiprocessing/spawn.py", line 125, in _main
+    prepare(preparation_data)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/multiprocessing/spawn.py", line 236, in prepare
+    _fixup_main_from_path(data['init_main_from_path'])
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/multiprocessing/spawn.py", line 287, in _fixup_main_from_path
+    main_content = runpy.run_path(main_path,
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 267, in run_path
+    code, fname = _get_code_from_file(run_name, path_name)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 242, in _get_code_from_file
+    code = compile(f.read(), fname, 'exec')
+  File "/Users/nithish-prabhu/Downloads/trading/main.py", line 695
+    <<<<<<< HEAD
+IndentationError: unexpected unindent
+WARNING:  StatReload detected changes in 'recommendation_engine.py'. Reloading...
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/multiprocessing/spawn.py", line 116, in spawn_main
+    exitcode = _main(fd, parent_sentinel)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/multiprocessing/spawn.py", line 125, in _main
+    prepare(preparation_data)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/multiprocessing/spawn.py", line 236, in prepare
+    _fixup_main_from_path(data['init_main_from_path'])
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/multiprocessing/spawn.py", line 287, in _fixup_main_from_path
+    main_content = runpy.run_path(main_path,
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 267, in run_path
+    code, fname = _get_code_from_file(run_name, path_name)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 242, in _get_code_from_file
+    code = compile(f.read(), fname, 'exec')
+  File "/Users/nithish-prabhu/Downloads/trading/main.py", line 695
+    <<<<<<< HEAD
+IndentationError: unexpected unindent
+WARNING:  StatReload detected changes in 'recommendation_engine.py'. Reloading...
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/multiprocessing/spawn.py", line 116, in spawn_main
+    exitcode = _main(fd, parent_sentinel)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/multiprocessing/spawn.py", line 125, in _main
+    prepare(preparation_data)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/multiprocessing/spawn.py", line 236, in prepare
+    _fixup_main_from_path(data['init_main_from_path'])
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/multiprocessing/spawn.py", line 287, in _fixup_main_from_path
+    main_content = runpy.run_path(main_path,
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 267, in run_path
+    code, fname = _get_code_from_file(run_name, path_name)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 242, in _get_code_from_file
+    code = compile(f.read(), fname, 'exec')
+  File "/Users/nithish-prabhu/Downloads/trading/main.py", line 695
+    <<<<<<< HEAD
+IndentationError: unexpected unindent
+WARNING:  StatReload detected changes in 'scratch/fix_engine.py'. Reloading...
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/multiprocessing/spawn.py", line 116, in spawn_main
+    exitcode = _main(fd, parent_sentinel)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/multiprocessing/spawn.py", line 125, in _main
+    prepare(preparation_data)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/multiprocessing/spawn.py", line 236, in prepare
+    _fixup_main_from_path(data['init_main_from_path'])
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/multiprocessing/spawn.py", line 287, in _fixup_main_from_path
+    main_content = runpy.run_path(main_path,
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 267, in run_path
+    code, fname = _get_code_from_file(run_name, path_name)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 242, in _get_code_from_file
+    code = compile(f.read(), fname, 'exec')
+  File "/Users/nithish-prabhu/Downloads/trading/main.py", line 695
+    <<<<<<< HEAD
+IndentationError: unexpected unindent
+WARNING:  StatReload detected changes in 'recommendation_engine.py'. Reloading...
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/multiprocessing/spawn.py", line 116, in spawn_main
+    exitcode = _main(fd, parent_sentinel)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/multiprocessing/spawn.py", line 125, in _main
+    prepare(preparation_data)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/multiprocessing/spawn.py", line 236, in prepare
+    _fixup_main_from_path(data['init_main_from_path'])
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/multiprocessing/spawn.py", line 287, in _fixup_main_from_path
+    main_content = runpy.run_path(main_path,
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 267, in run_path
+    code, fname = _get_code_from_file(run_name, path_name)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 242, in _get_code_from_file
+    code = compile(f.read(), fname, 'exec')
+  File "/Users/nithish-prabhu/Downloads/trading/main.py", line 695
+    <<<<<<< HEAD
+IndentationError: unexpected unindent
+WARNING:  StatReload detected changes in 'scratch/fix_engine.py'. Reloading...
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/multiprocessing/spawn.py", line 116, in spawn_main
+    exitcode = _main(fd, parent_sentinel)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/multiprocessing/spawn.py", line 125, in _main
+    prepare(preparation_data)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/multiprocessing/spawn.py", line 236, in prepare
+    _fixup_main_from_path(data['init_main_from_path'])
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/multiprocessing/spawn.py", line 287, in _fixup_main_from_path
+    main_content = runpy.run_path(main_path,
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 267, in run_path
+    code, fname = _get_code_from_file(run_name, path_name)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 242, in _get_code_from_file
+    code = compile(f.read(), fname, 'exec')
+  File "/Users/nithish-prabhu/Downloads/trading/main.py", line 695
+    <<<<<<< HEAD
+IndentationError: unexpected unindent
+WARNING:  StatReload detected changes in 'recommendation_engine.py'. Reloading...
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/multiprocessing/spawn.py", line 116, in spawn_main
+    exitcode = _main(fd, parent_sentinel)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/multiprocessing/spawn.py", line 125, in _main
+    prepare(preparation_data)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/multiprocessing/spawn.py", line 236, in prepare
+    _fixup_main_from_path(data['init_main_from_path'])
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/multiprocessing/spawn.py", line 287, in _fixup_main_from_path
+    main_content = runpy.run_path(main_path,
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 267, in run_path
+    code, fname = _get_code_from_file(run_name, path_name)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 242, in _get_code_from_file
+    code = compile(f.read(), fname, 'exec')
+  File "/Users/nithish-prabhu/Downloads/trading/main.py", line 695
+    <<<<<<< HEAD
+IndentationError: unexpected unindent
+WARNING:  StatReload detected changes in 'main.py'. Reloading...
+/Users/nithish-prabhu/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+INFO:     Started server process [5594]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+[2026-04-19 02:55:48.377827] Processing Weekly Sunday Status...
+✅ Telegram alert sent successfully!
+INFO:     127.0.0.1:55576 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55576 - "GET /app.js?v=4 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55948 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55948 - "GET /style.css?v=2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55950 - "GET /app.js?v=4 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56071 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56071 - "GET /app.js?v=4 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:56071 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56071 - "GET /style.css?v=2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56075 - "GET /app.js?v=4 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56313 - "GET / HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:56313 - "GET /app.js?v=4 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56313 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56313 - "GET /style.css?v=2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56394 - "GET /app.js?v=4 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56552 - "GET / HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:56552 - "GET /app.js?v=4 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56552 - "GET /api/accuracy HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56555 - "GET /api/recommendations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56555 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56555 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56583 - "GET /api/backtests HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56584 - "GET /api/backtest/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56658 - "GET /api/portfolio HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56670 - "GET /api/portfolio HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56670 - "GET /api/backtests HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56672 - "GET /api/backtest/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56672 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56672 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56672 - "GET /api/cost-analysis HTTP/1.1" 200 OK
+WARNING:  StatReload detected changes in 'main.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [5594]
+/Users/nithish-prabhu/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+INFO:     Started server process [10251]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'recommendation_engine.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [10251]
+[2026-04-19 03:04:56.636704] Processing Weekly Sunday Status...
+✅ Telegram alert sent successfully!
+/Users/nithish-prabhu/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+INFO:     Started server process [10348]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+[2026-04-19 03:05:08.462791] Processing Weekly Sunday Status...
+✅ Telegram alert sent successfully!
+INFO:     127.0.0.1:57220 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57220 - "GET /style.css?v=2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57222 - "GET /app.js?v=4 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57222 - "GET /api/accuracy HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57220 - "GET /api/recommendations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57220 - "GET /api/cost-analysis HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57220 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57220 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57220 - "POST /api/watchlist?symbol=MWA HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57220 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57220 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57220 - "POST /api/watchlist?symbol=ALV HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57220 - "POST /api/watchlist?symbol=PRIM HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57220 - "POST /api/watchlist?symbol=WMS HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57220 - "POST /api/watchlist?symbol=MXL HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57220 - "POST /api/watchlist?symbol=CVBF HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57220 - "POST /api/watchlist?symbol=HIMS HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57220 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57220 - "GET /api/backtests HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57243 - "GET /api/backtest/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57339 - "POST /api/analyze HTTP/1.1" 200 OK
+Analyzing HIMS...
+INFO:     127.0.0.1:57339 - "GET /api/recommendations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57343 - "GET /api/accuracy HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57343 - "GET / HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:57343 - "GET /app.js?v=4 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:57343 - "GET /api/accuracy HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57339 - "GET /api/recommendations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57339 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57339 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57339 - "GET /api/backtests HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57349 - "GET /api/backtest/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57349 - "POST /api/backtest/run HTTP/1.1" 200 OK
+--- RUNNING BACKTEST: HIMS ---
+  [HIMS] Progress: 1/13 (Analyzing week of 2026-01-23)...
+Error analyzing HIMS: _get_technicals() got an unexpected keyword argument 'sector'
+  [HIMS] Warning: No recommendation returned for 2026-01-23
+  [HIMS] Progress: 2/13 (Analyzing week of 2026-01-30)...
+Error analyzing HIMS: _get_technicals() got an unexpected keyword argument 'sector'
+  [HIMS] Warning: No recommendation returned for 2026-01-30
+  [HIMS] Progress: 3/13 (Analyzing week of 2026-02-06)...
+Error analyzing HIMS: _get_technicals() got an unexpected keyword argument 'sector'
+  [HIMS] Warning: No recommendation returned for 2026-02-06
+  [HIMS] Progress: 4/13 (Analyzing week of 2026-02-13)...
+Error analyzing HIMS: _get_technicals() got an unexpected keyword argument 'sector'
+  [HIMS] Warning: No recommendation returned for 2026-02-13
+  [HIMS] Progress: 5/13 (Analyzing week of 2026-02-20)...
+Error analyzing HIMS: _get_technicals() got an unexpected keyword argument 'sector'
+  [HIMS] Warning: No recommendation returned for 2026-02-20
+  [HIMS] Progress: 6/13 (Analyzing week of 2026-02-27)...
+Error analyzing HIMS: _get_technicals() got an unexpected keyword argument 'sector'
+  [HIMS] Warning: No recommendation returned for 2026-02-27
+  [HIMS] Progress: 7/13 (Analyzing week of 2026-03-06)...
+Error analyzing HIMS: _get_technicals() got an unexpected keyword argument 'sector'
+  [HIMS] Warning: No recommendation returned for 2026-03-06
+  [HIMS] Progress: 8/13 (Analyzing week of 2026-03-13)...
+Error analyzing HIMS: _get_technicals() got an unexpected keyword argument 'sector'
+  [HIMS] Warning: No recommendation returned for 2026-03-13
+  [HIMS] Progress: 9/13 (Analyzing week of 2026-03-20)...
+Error analyzing HIMS: _get_technicals() got an unexpected keyword argument 'sector'
+  [HIMS] Warning: No recommendation returned for 2026-03-20
+  [HIMS] Progress: 10/13 (Analyzing week of 2026-03-27)...
+Error analyzing HIMS: _get_technicals() got an unexpected keyword argument 'sector'
+  [HIMS] Warning: No recommendation returned for 2026-03-27
+  [HIMS] Progress: 11/13 (Analyzing week of 2026-04-03)...
+Error analyzing HIMS: _get_technicals() got an unexpected keyword argument 'sector'
+  [HIMS] Warning: No recommendation returned for 2026-04-03
+  [HIMS] Progress: 12/13 (Analyzing week of 2026-04-10)...
+Error analyzing HIMS: _get_technicals() got an unexpected keyword argument 'sector'
+  [HIMS] Warning: No recommendation returned for 2026-04-10
+  [HIMS] Progress: 13/13 (Analyzing week of 2026-04-17)...
+Error analyzing HIMS: _get_technicals() got an unexpected keyword argument 'sector'
+  [HIMS] Warning: No recommendation returned for 2026-04-17
+Backtest Job 9 Completed.
+INFO:     127.0.0.1:57369 - "GET /api/cost-analysis HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57373 - "GET / HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:57373 - "GET /app.js?v=4 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:57373 - "GET /api/accuracy HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57375 - "GET /api/recommendations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57375 - "GET /api/cost-analysis HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57375 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57375 - "GET /api/backtests HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57383 - "GET /api/backtest/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57473 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57473 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57473 - "GET /api/backtests HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57475 - "GET /api/backtest/results HTTP/1.1" 200 OK
+WARNING:  StatReload detected changes in 'recommendation_engine.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [10348]
+/Users/nithish-prabhu/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+INFO:     Started server process [12320]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+[2026-04-19 03:08:46.902753] Processing Weekly Sunday Status...
+✅ Telegram alert sent successfully!
+INFO:     127.0.0.1:58021 - "POST /api/backtest/run HTTP/1.1" 200 OK
+--- RUNNING BACKTEST: HIMS ---
+  [HIMS] Progress: 1/13 (Analyzing week of 2026-01-23)...
+Error analyzing HIMS: _get_technicals() got an unexpected keyword argument 'sector'
+  [HIMS] Warning: No recommendation returned for 2026-01-23
+  [HIMS] Progress: 2/13 (Analyzing week of 2026-01-30)...
+Error analyzing HIMS: _get_technicals() got an unexpected keyword argument 'sector'
+  [HIMS] Warning: No recommendation returned for 2026-01-30
+  [HIMS] Progress: 3/13 (Analyzing week of 2026-02-06)...
+Error analyzing HIMS: _get_technicals() got an unexpected keyword argument 'sector'
+  [HIMS] Warning: No recommendation returned for 2026-02-06
+  [HIMS] Progress: 4/13 (Analyzing week of 2026-02-13)...
+Error analyzing HIMS: _get_technicals() got an unexpected keyword argument 'sector'
+  [HIMS] Warning: No recommendation returned for 2026-02-13
+  [HIMS] Progress: 5/13 (Analyzing week of 2026-02-20)...
+Error analyzing HIMS: _get_technicals() got an unexpected keyword argument 'sector'
+  [HIMS] Warning: No recommendation returned for 2026-02-20
+  [HIMS] Progress: 6/13 (Analyzing week of 2026-02-27)...
+Error analyzing HIMS: _get_technicals() got an unexpected keyword argument 'sector'
+  [HIMS] Warning: No recommendation returned for 2026-02-27
+  [HIMS] Progress: 7/13 (Analyzing week of 2026-03-06)...
+Error analyzing HIMS: _get_technicals() got an unexpected keyword argument 'sector'
+  [HIMS] Warning: No recommendation returned for 2026-03-06
+  [HIMS] Progress: 8/13 (Analyzing week of 2026-03-13)...
+Error analyzing HIMS: _get_technicals() got an unexpected keyword argument 'sector'
+  [HIMS] Warning: No recommendation returned for 2026-03-13
+  [HIMS] Progress: 9/13 (Analyzing week of 2026-03-20)...
+Error analyzing HIMS: _get_technicals() got an unexpected keyword argument 'sector'
+  [HIMS] Warning: No recommendation returned for 2026-03-20
+  [HIMS] Progress: 10/13 (Analyzing week of 2026-03-27)...
+Error analyzing HIMS: _get_technicals() got an unexpected keyword argument 'sector'
+  [HIMS] Warning: No recommendation returned for 2026-03-27
+  [HIMS] Progress: 11/13 (Analyzing week of 2026-04-03)...
+Error analyzing HIMS: _get_technicals() got an unexpected keyword argument 'sector'
+  [HIMS] Warning: No recommendation returned for 2026-04-03
+  [HIMS] Progress: 12/13 (Analyzing week of 2026-04-10)...
+Error analyzing HIMS: _get_technicals() got an unexpected keyword argument 'sector'
+  [HIMS] Warning: No recommendation returned for 2026-04-10
+  [HIMS] Progress: 13/13 (Analyzing week of 2026-04-17)...
+Error analyzing HIMS: _get_technicals() got an unexpected keyword argument 'sector'
+  [HIMS] Warning: No recommendation returned for 2026-04-17
+Backtest Job 10 Completed.
+INFO:     127.0.0.1:58146 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58148 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58148 - "GET /api/cost-analysis HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58151 - "GET /api/portfolio HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58151 - "GET /api/portfolio HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58151 - "GET /api/backtests HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58153 - "GET /api/backtest/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58163 - "POST /api/backtest/run HTTP/1.1" 200 OK
+--- RUNNING BACKTEST: WMS ---
+  [WMS] Progress: 1/13 (Analyzing week of 2026-01-23)...
+Error analyzing WMS: _get_technicals() got an unexpected keyword argument 'sector'
+  [WMS] Warning: No recommendation returned for 2026-01-23
+  [WMS] Progress: 2/13 (Analyzing week of 2026-01-30)...
+Error analyzing WMS: _get_technicals() got an unexpected keyword argument 'sector'
+  [WMS] Warning: No recommendation returned for 2026-01-30
+  [WMS] Progress: 3/13 (Analyzing week of 2026-02-06)...
+Error analyzing WMS: _get_technicals() got an unexpected keyword argument 'sector'
+  [WMS] Warning: No recommendation returned for 2026-02-06
+  [WMS] Progress: 4/13 (Analyzing week of 2026-02-13)...
+Error analyzing WMS: _get_technicals() got an unexpected keyword argument 'sector'
+  [WMS] Warning: No recommendation returned for 2026-02-13
+  [WMS] Progress: 5/13 (Analyzing week of 2026-02-20)...
+Error analyzing WMS: _get_technicals() got an unexpected keyword argument 'sector'
+  [WMS] Warning: No recommendation returned for 2026-02-20
+  [WMS] Progress: 6/13 (Analyzing week of 2026-02-27)...
+Error analyzing WMS: _get_technicals() got an unexpected keyword argument 'sector'
+  [WMS] Warning: No recommendation returned for 2026-02-27
+  [WMS] Progress: 7/13 (Analyzing week of 2026-03-06)...
+Error analyzing WMS: _get_technicals() got an unexpected keyword argument 'sector'
+  [WMS] Warning: No recommendation returned for 2026-03-06
+  [WMS] Progress: 8/13 (Analyzing week of 2026-03-13)...
+Error analyzing WMS: _get_technicals() got an unexpected keyword argument 'sector'
+  [WMS] Warning: No recommendation returned for 2026-03-13
+  [WMS] Progress: 9/13 (Analyzing week of 2026-03-20)...
+Error analyzing WMS: _get_technicals() got an unexpected keyword argument 'sector'
+  [WMS] Warning: No recommendation returned for 2026-03-20
+  [WMS] Progress: 10/13 (Analyzing week of 2026-03-27)...
+Error analyzing WMS: _get_technicals() got an unexpected keyword argument 'sector'
+  [WMS] Warning: No recommendation returned for 2026-03-27
+  [WMS] Progress: 11/13 (Analyzing week of 2026-04-03)...
+Error analyzing WMS: _get_technicals() got an unexpected keyword argument 'sector'
+  [WMS] Warning: No recommendation returned for 2026-04-03
+  [WMS] Progress: 12/13 (Analyzing week of 2026-04-10)...
+Error analyzing WMS: _get_technicals() got an unexpected keyword argument 'sector'
+  [WMS] Warning: No recommendation returned for 2026-04-10
+  [WMS] Progress: 13/13 (Analyzing week of 2026-04-17)...
+Error analyzing WMS: _get_technicals() got an unexpected keyword argument 'sector'
+  [WMS] Warning: No recommendation returned for 2026-04-17
+Backtest Job 11 Completed.
+INFO:     127.0.0.1:58192 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58192 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58197 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58197 - "GET /api/cost-analysis HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58197 - "GET / HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:58197 - "GET /app.js?v=4 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:58197 - "GET /api/accuracy HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58199 - "GET /api/recommendations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58199 - "GET /api/cost-analysis HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58199 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58199 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58199 - "GET /api/backtests HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58201 - "GET /api/backtest/results HTTP/1.1" 200 OK
+WARNING:  StatReload detected changes in 'weekly_backtest.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [12320]
+/Users/nithish-prabhu/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+INFO:     Started server process [13118]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+[2026-04-19 03:12:56.181444] Processing Weekly Sunday Status...
+✅ Telegram alert sent successfully!
+INFO:     127.0.0.1:58227 - "POST /api/backtest/run HTTP/1.1" 200 OK
+--- RUNNING BACKTEST: WMS ---
+  [WMS] Progress: 1/13 (Analyzing week of 2026-01-23)...
+  [WMS] Progress: 2/13 (Analyzing week of 2026-01-30)...
+  [WMS] Progress: 3/13 (Analyzing week of 2026-02-06)...
+INFO:     127.0.0.1:58249 - "GET / HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:58249 - "GET /app.js?v=4 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:58249 - "GET /api/accuracy HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58252 - "GET /api/recommendations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58252 - "GET /api/cost-analysis HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58252 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58252 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58252 - "GET /api/backtests HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58249 - "GET /api/backtest/results HTTP/1.1" 200 OK
+  [WMS] Progress: 4/13 (Analyzing week of 2026-02-13)...
+  [WMS] Progress: 5/13 (Analyzing week of 2026-02-20)...
+  [WMS] Progress: 6/13 (Analyzing week of 2026-02-27)...
+  [WMS] Progress: 7/13 (Analyzing week of 2026-03-06)...
+INFO:     127.0.0.1:58266 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58266 - "GET /style.css?v=2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58268 - "GET /app.js?v=4 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58268 - "GET /api/accuracy HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58266 - "GET /api/recommendations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58266 - "GET /api/cost-analysis HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58266 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58266 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58266 - "GET /api/backtests HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58278 - "GET /api/backtest/results HTTP/1.1" 200 OK
+  [WMS] Progress: 8/13 (Analyzing week of 2026-03-13)...
+INFO:     127.0.0.1:58278 - "GET /api/backtests/11 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58281 - "GET /api/backtests/10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58281 - "GET /api/backtests/8 HTTP/1.1" 200 OK
+  [WMS] Progress: 9/13 (Analyzing week of 2026-03-20)...
+INFO:     127.0.0.1:58284 - "GET /api/backtests/9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58284 - "GET /api/backtests/5 HTTP/1.1" 200 OK
+  [WMS] Progress: 10/13 (Analyzing week of 2026-03-27)...
+INFO:     127.0.0.1:58290 - "POST /api/backtest/run HTTP/1.1" 200 OK
+--- RUNNING BACKTEST: WMS ---
+  [WMS] Progress: 1/13 (Analyzing week of 2026-01-23)...
+  [WMS] Progress: 11/13 (Analyzing week of 2026-04-03)...
+  [WMS] Progress: 2/13 (Analyzing week of 2026-01-30)...
+  [WMS] Progress: 12/13 (Analyzing week of 2026-04-10)...
+INFO:     127.0.0.1:58310 - "GET /api/backtests HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58311 - "GET /api/backtest/results HTTP/1.1" 200 OK
+  [WMS] Progress: 3/13 (Analyzing week of 2026-02-06)...
+INFO:     127.0.0.1:58310 - "GET /api/backtest/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58311 - "GET /api/backtests HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58310 - "GET /api/backtest/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58311 - "GET /api/backtests HTTP/1.1" 200 OK
+  [WMS] Progress: 13/13 (Analyzing week of 2026-04-17)...
+  [WMS] Progress: 4/13 (Analyzing week of 2026-02-13)...
+Backtest Job 12 Completed.
+  [WMS] Progress: 5/13 (Analyzing week of 2026-02-20)...
+  [WMS] Progress: 6/13 (Analyzing week of 2026-02-27)...
+INFO:     127.0.0.1:58323 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58323 - "GET /style.css?v=2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58325 - "GET /app.js?v=4 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58325 - "GET /api/accuracy HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58323 - "GET /api/recommendations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58323 - "GET /api/cost-analysis HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58323 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58323 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58323 - "GET /api/backtests HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58325 - "GET /api/backtest/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58325 - "GET /api/backtests/12 HTTP/1.1" 200 OK
+  [WMS] Progress: 7/13 (Analyzing week of 2026-03-06)...
+  [WMS] Progress: 8/13 (Analyzing week of 2026-03-13)...
+  [WMS] Progress: 9/13 (Analyzing week of 2026-03-20)...
+INFO:     127.0.0.1:58344 - "POST /api/backtest/run HTTP/1.1" 200 OK
+--- RUNNING BACKTEST: GOOGL ---
+  [GOOGL] Progress: 1/13 (Analyzing week of 2026-01-23)...
+INFO:     127.0.0.1:58352 - "GET /api/backtest/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58351 - "GET /api/backtests HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58351 - "GET /api/backtests/11 HTTP/1.1" 200 OK
+  [WMS] Progress: 10/13 (Analyzing week of 2026-03-27)...
+INFO:     127.0.0.1:58351 - "GET /api/backtests/10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58351 - "GET /api/backtests/8 HTTP/1.1" 200 OK
+  [GOOGL] Progress: 2/13 (Analyzing week of 2026-01-30)...
+INFO:     127.0.0.1:58358 - "GET /api/backtests/12 HTTP/1.1" 200 OK
+  [WMS] Progress: 11/13 (Analyzing week of 2026-04-03)...
+INFO:     127.0.0.1:58358 - "GET /api/backtest/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58372 - "GET /api/backtests HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58373 - "GET /api/backtest/results HTTP/1.1" 200 OK
+  [WMS] Progress: 12/13 (Analyzing week of 2026-04-10)...
+  [GOOGL] Progress: 3/13 (Analyzing week of 2026-02-06)...
+  [WMS] Progress: 13/13 (Analyzing week of 2026-04-17)...
+INFO:     127.0.0.1:58378 - "GET /api/backtests HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58379 - "GET /api/backtest/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58378 - "GET /api/backtest/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58379 - "GET /api/backtests HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58379 - "GET / HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:58379 - "GET /app.js?v=4 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:58378 - "GET /api/recommendations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58379 - "GET /api/accuracy HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58379 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58378 - "GET /api/backtest/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58379 - "GET /api/backtests HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58379 - "GET /api/backtests/12 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58379 - "GET /api/backtest/results HTTP/1.1" 200 OK
+  [GOOGL] Progress: 4/13 (Analyzing week of 2026-02-13)...
+Backtest Job 13 Completed.
+INFO:     127.0.0.1:58386 - "GET /api/backtests HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58387 - "GET /api/backtest/results HTTP/1.1" 200 OK
+  [GOOGL] Progress: 5/13 (Analyzing week of 2026-02-20)...
+  [GOOGL] Progress: 6/13 (Analyzing week of 2026-02-27)...
+  [GOOGL] Progress: 7/13 (Analyzing week of 2026-03-06)...
+  [GOOGL] Progress: 8/13 (Analyzing week of 2026-03-13)...
+  [GOOGL] Progress: 9/13 (Analyzing week of 2026-03-20)...
+  [GOOGL] Progress: 10/13 (Analyzing week of 2026-03-27)...
+INFO:     127.0.0.1:58436 - "GET /api/backtests HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58437 - "GET /api/backtest/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58437 - "GET /api/backtests HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58436 - "GET /api/backtest/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58442 - "GET /api/discover HTTP/1.1" 200 OK
+  [GOOGL] Progress: 11/13 (Analyzing week of 2026-04-03)...
+INFO:     127.0.0.1:58442 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58442 - "GET /api/cost-analysis HTTP/1.1" 200 OK
