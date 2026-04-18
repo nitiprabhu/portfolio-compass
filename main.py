@@ -327,7 +327,8 @@ def get_portfolio():
         with sqlite3.connect(engine.db.db_path) as conn:
             for pos in positions:
                 symbol, action, entry, target, stop, date, status = pos
-                if not entry: continue
+                if entry is None: continue
+
                 
                 try:
                     live_price = tickers.tickers[symbol].history(period="1d")["Close"].iloc[-1]
