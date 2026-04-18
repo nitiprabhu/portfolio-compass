@@ -40,6 +40,9 @@
                 <a href="#" class="nav-item" id="nav-costs">
                     <i data-lucide="banknote"></i> Cost Analysis
                 </a>
+                <a href="#" class="nav-item" id="nav-research">
+                    <i data-lucide="microscope"></i> Research Assistant
+                </a>
                 <a href="#" class="nav-item">
                     <i data-lucide="settings"></i> Settings
                 </a>
@@ -382,6 +385,37 @@
                     </div>
                 </div>
             </div> <!-- End Cost Analysis View -->
+
+            <!-- Research Assistant View -->
+            <div id="view-research" class="hidden">
+                 <div class="section-container glass-panel">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px;">
+                        <div>
+                            <h2 style="font-size: 18px; font-weight: 600; color: var(--text-main); margin-bottom: 4px;">AI Research Assistant</h2>
+                            <p style="color: var(--text-muted); font-size: 13px;">Deep narrative analysis using Claude 3.5 Sonnet</p>
+                        </div>
+                    </div>
+                    
+                    <div class="research-input-group" style="display: flex; gap: 12px; margin-bottom: 30px;">
+                        <input type="text" id="research-symbol" class="text-input" placeholder="Symbol (e.g. GOOGL)" style="width: 150px;">
+                        <input type="text" id="research-question" class="text-input" placeholder="Ask a deep research question... (e.g. What are the key risks in their recent news?)" style="flex: 1;">
+                        <button class="btn btn-primary" id="run-research-btn">
+                            <i data-lucide="search"></i> Run Deep Research
+                        </button>
+                    </div>
+
+                    <div id="research-status" style="display: none; padding: 20px; background: rgba(59, 130, 246, 0.1); border: 1px solid var(--primary); border-radius: 12px; margin-bottom: 24px; color: var(--primary);">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div class="spinner"></div>
+                            <span>Synthesizing news, profile, and internal history... (est. 15s)</span>
+                        </div>
+                    </div>
+
+                    <div id="research-response" class="terminal-view glass-panel" style="display: none; padding: 24px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.05); min-height: 400px; max-height: 600px; overflow-y: auto; line-height: 1.6; font-size: 15px; color: var(--text-light);">
+                        <!-- AI Response injected here -->
+                    </div>
+                </div>
+            </div> <!-- End Research View -->
 
         </main>
     </div>
