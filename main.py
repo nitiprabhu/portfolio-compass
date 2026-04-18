@@ -264,6 +264,26 @@ def get_portfolio():
                 elif pnl_pct < -5: alert = "⚠️ UNDERPERFORMING"
                 elif active_stop > stop: alert = f"🛡️ TRAILING STOP: ${active_stop:.2f}"
                     
+                # Get latest technical score and recommendation for AI verdict
+                cursor.execute("""
+                    SELECT technical_score, recommendation 
+                    FROM recommendations 
+                    WHERE symbol = ? 
+                    ORDER BY created_at DESC LIMIT 1
+                """, (symbol,))
+                latest_rec = cursor.fetchone()
+                tech_score = latest_rec[0] if latest_rec else 0
+                
+                # AI Verdict Logic
+                if tech_score >= 6: ai_verdict = "🔥 BUY MORE"
+                elif tech_score >= 2: ai_verdict = "✅ HOLD"
+                elif tech_score >= -2: ai_verdict = "⚖️ NEUTRAL"
+                else: ai_verdict = "⚠️ TRIM"
+                
+                # Proximity analysis
+                dist_to_stop = ((live_price - active_stop) / live_price) * 100
+                dist_to_target = ((target - live_price) / live_price) * 100
+                
                 portfolio_data.append({
                     "symbol": symbol,
                     "entry": entry,
@@ -271,7 +291,11 @@ def get_portfolio():
                     "pnl_pct": pnl_pct,
                     "target": target,
                     "stop": active_stop,
-                    "alert": alert
+                    "alert": alert,
+                    "verdict": ai_verdict,
+                    "tech_score": tech_score,
+                    "dist_to_stop": dist_to_stop,
+                    "dist_to_target": dist_to_target
                 })
             conn.commit()
             

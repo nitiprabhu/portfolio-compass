@@ -432,6 +432,19 @@ document.addEventListener('DOMContentLoaded', () => {
                         else if(item.alert.includes('STOP')) badgeClass = 'sell';
                         else if(item.alert.includes('UNDER')) badgeClass = 'sell';
                         
+                        // Verdict style
+                        let verdictClass = 'hold';
+                        if(item.verdict.includes('BUY')) verdictClass = 'buy';
+                        else if(item.verdict.includes('TRIM')) verdictClass = 'sell';
+                        
+                        // Distance Alert
+                        let distText = `<span style="color: var(--text-muted); font-size: 11px;">🎯 +${item.dist_to_target.toFixed(1)}%</span>`;
+                        if(item.dist_to_stop < 5) {
+                            distText = `<span style="color: var(--danger); font-size: 11px; font-weight: bold;">🛑 ${item.dist_to_stop.toFixed(1)}% to Stop</span>`;
+                        } else if(item.dist_to_target < 5) {
+                            distText = `<span style="color: var(--success); font-size: 11px; font-weight: bold;">🎯 ${item.dist_to_target.toFixed(1)}% to Target</span>`;
+                        }
+
                         tr.innerHTML = `
                             <td style="font-weight: bold; color: var(--text-light);"><div class="symbol-cell">${item.symbol}</div></td>
                             <td>$${item.entry.toFixed(2)}</td>
@@ -439,9 +452,10 @@ document.addEventListener('DOMContentLoaded', () => {
                             <td style="color: ${item.pnl_pct >= 0 ? 'var(--success)' : 'var(--danger)'}">
                                 ${item.pnl_pct > 0 ? '+' : ''}${item.pnl_pct.toFixed(2)}%
                             </td>
-                            <td class="target-price">$${item.target?.toFixed(2) || '--'}</td>
-                            <td class="stop-loss">$${item.stop?.toFixed(2) || '--'}</td>
+                            <td><span class="badge ${verdictClass}" style="letter-spacing: 0; padding: 4px 8px;">${item.verdict}</span></td>
+                            <td>${distText}</td>
                             <td><span class="badge ${badgeClass}">${item.alert}</span></td>
+                            <td style="font-family: monospace; color: var(--text-muted);">${item.tech_score > 0 ? '+' : ''}${item.tech_score}</td>
                         `;
                         portTbody.appendChild(tr);
                     });
