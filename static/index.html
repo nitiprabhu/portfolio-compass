@@ -28,6 +28,12 @@
                 <a href="#" class="nav-item" id="nav-portfolio">
                     <i data-lucide="briefcase"></i> Portfolio
                 </a>
+                <a href="#" class="nav-item" id="nav-backtest">
+                    <i data-lucide="history"></i> Proof of History
+                </a>
+                <a href="#" class="nav-item" id="nav-discovery">
+                    <i data-lucide="search"></i> Market Discovery
+                </a>
                 <a href="#" class="nav-item">
                     <i data-lucide="settings"></i> Settings
                 </a>
@@ -46,22 +52,24 @@
 
         <!-- Main Content -->
         <main class="main-content">
-            <header class="top-header">
-                <div class="header-content">
-                    <h1>Dashboard</h1>
-                    <p class="subtitle">Your AI-powered portfolio insights</p>
-                </div>
+            <!-- Dashboard View -->
+            <div id="view-dashboard">
+                <header class="top-header">
+                    <div class="header-content">
+                        <h1>Dashboard</h1>
+                        <p class="subtitle">Your AI-powered portfolio insights</p>
+                    </div>
                 <div class="header-actions">
-                    <button class="btn btn-primary" id="analyze-btn">
+                    <button class="btn btn-primary" id="analyze-btn" style="background: var(--bg-panel); border: 1px solid var(--border-color); color: var(--text-main); box-shadow: none;">
                         <i data-lucide="cpu"></i> Run Analysis
                     </button>
                     <button class="btn btn-icon">
                         <i data-lucide="bell"></i>
                     </button>
                 </div>
-            </header>
+                </header>
 
-            <div id="view-dashboard" class="dashboard-grid">
+                <div class="dashboard-grid">
                 <!-- Stats Row -->
                 <div class="stats-container">
                     <div class="stat-card glass-panel">
@@ -100,15 +108,17 @@
                 <div id="analysis-modal" class="modal hidden">
                     <div class="modal-content glass-panel">
                         <div class="modal-header">
-                            <h2>New Analysis</h2>
-                            <button id="close-modal" class="btn-icon"><i data-lucide="x"></i></button>
+                            <h2>Run New Analysis</h2>
+                            <button class="btn-icon" id="close-modal" aria-label="Close modal">
+                                <i data-lucide="x"></i>
+                            </button>
                         </div>
-                        <div class="modal-body">
-                            <p>Enter stock symbols to analyze (comma separated):</p>
-                            <input type="text" id="symbols-input" placeholder="e.g. AAPL, MSFT, NVDA" class="text-input">
-                            <button id="start-analysis" class="btn btn-primary w-full">Start Background Analysis</button>
-                            <p id="analysis-status" class="status-msg hidden"></p>
-                        </div>
+                        <p class="subtitle" style="margin-bottom: 8px;">Enter comma-separated symbols:</p>
+                        <input type="text" id="symbols-input" class="text-input" placeholder="e.g. AAPL, MSFT, TSLA">
+                        <button class="btn btn-primary w-full" id="start-analysis">
+                            <i data-lucide="play"></i> Start Analysis
+                        </button>
+                        <div id="analysis-status" class="status-msg"></div>
                     </div>
                 </div>
 
@@ -144,73 +154,146 @@
                         </div>
                     </div>
                 </div>
-            </div>
+            </div> <!-- End dashboard-grid -->
+        </div> <!-- End view-dashboard -->
 
-            <!-- Portfolio View -->
-            <div id="view-portfolio" class="dashboard-grid hidden">
-                <div class="stats-container">
-                    <div class="stat-card glass-panel">
-                        <div class="stat-icon-wrapper info">
-                            <i data-lucide="briefcase"></i>
+            <div id="view-portfolio" class="portfolio-grid hidden">
+                <div class="section-container glass-panel">
+                    <div class="section-header" style="justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255, 255, 255, 0.1); padding-bottom: 20px;">
+                        <div>
+                            <h2>Live Positions</h2>
+                            <p class="subtitle">Real-time tracking of active recommendations</p>
                         </div>
-                        <div class="stat-info">
-                            <h3>Total Invested</h3>
-                            <div class="stat-value" id="port-invested">$--</div>
+                        <div class="portfolio-stats" style="display: flex; gap: 30px;">
+                            <div class="p-stat">
+                                <span class="stat-label" style="color: var(--text-muted); font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Total Value</span>
+                                <div class="stat-val" id="port-value" style="font-size: 24px; font-weight: 700; color: var(--text-main);">$0.00</div>
+                            </div>
+                            <div class="p-stat">
+                                <span class="stat-label" style="color: var(--text-muted); font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Invested</span>
+                                <div class="stat-val" id="port-invested" style="font-size: 24px; font-weight: 700; color: var(--text-light);">$0.00</div>
+                            </div>
+                            <div class="p-stat">
+                                <span class="stat-label" style="color: var(--text-muted); font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Total Return</span>
+                                <div class="stat-val" id="port-pnl" style="font-size: 24px; font-weight: 700; color: var(--success);">0.00%</div>
+                            </div>
                         </div>
-                    </div>
-                    <div class="stat-card glass-panel">
-                        <div class="stat-icon-wrapper warning">
-                            <i data-lucide="pie-chart"></i>
-                        </div>
-                        <div class="stat-info">
-                            <h3>Total Value</h3>
-                            <div class="stat-value" id="port-value">$--</div>
-                        </div>
-                    </div>
-                    <div class="stat-card glass-panel">
-                        <div class="stat-icon-wrapper success">
-                            <i data-lucide="trending-up"></i>
-                        </div>
-                        <div class="stat-info">
-                            <h3>Overall PnL</h3>
-                            <div class="stat-value" id="port-pnl">--%</div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="section-container glass-panel recommendations-section">
-                    <div class="section-header">
-                        <h2>Active Holdings</h2>
                     </div>
                     
-                    <div class="table-container">
-                        <table class="data-table">
+                    <div id="loading-state-port" class="loading-state hidden">
+                        <div class="spinner"></div>
+                        <p>Syncing portfolio...</p>
+                    </div>
+
+                    <div class="table-responsive" style="margin-top: 20px;">
+                        <table class="data-table portfolio-table">
                             <thead>
                                 <tr>
-                                    <th>Symbol</th>
-                                    <th>Entry Price</th>
-                                    <th>Live Price</th>
-                                    <th>% Return</th>
-                                    <th>Target</th>
-                                    <th>Stop Loss</th>
-                                    <th>Status</th>
+                                    <th>ASSET</th>
+                                    <th>ENTRY</th>
+                                    <th>LIVE PRICE</th>
+                                    <th>RETURN</th>
+                                    <th>TARGET</th>
+                                    <th>STOP LOSS</th>
+                                    <th>STATUS</th>
                                 </tr>
                             </thead>
                             <tbody id="portfolio-tbody">
-                                <!-- Populated by JS -->
+                                <!-- JS Populated -->
                             </tbody>
                         </table>
-                        <div id="loading-state-port" class="loading-state">
-                            <div class="spinner"></div>
-                            <p>Loading live prices...</p>
-                        </div>
                     </div>
                 </div>
             </div>
 
+            <!-- Backtest View (Hidden by default) -->
+            <div id="view-backtest" class="dashboard-grid hidden">
+                <div class="section-container glass-panel">
+                    <div class="section-header" style="justify-content: space-between; align-items: flex-start; border-bottom: 1px solid rgba(255, 255, 255, 0.1); padding-bottom: 20px;">
+                        <div style="flex: 1;">
+                            <h2>Proof of History</h2>
+                            <p class="subtitle">3-Month simulated returns based on past AI performance</p>
+                            
+                            <div style="display: flex; gap: 12px; margin-top: 16px; align-items: center;">
+                                <input type="text" id="backtest-symbol-input" class="text-input" value="AAPL, MSFT, NVDA, GOOGL, TSLA" style="width: 300px;">
+                                <button class="btn btn-primary" id="submit-backtest">
+                                    <i data-lucide="history"></i> Run 90-Day Simulation
+                                </button>
+                                <button class="btn btn-icon" id="refresh-backtest" title="Refresh Results">
+                                    <i data-lucide="refresh-cw"></i>
+                                </button>
+                                
+                                <div style="margin-left: auto; display: flex; align-items: center; gap: 8px;">
+                                    <span style="color: var(--text-muted); font-size: 13px;">View Past Run:</span>
+                                    <select id="past-runs-select" class="text-input" style="width: 200px; padding: 6px 12px; font-size: 13px;">
+                                        <option value="">Latest Run (Active)</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="backtest-aggregate-stats" class="portfolio-stats" style="display: none; gap: 30px; margin-top: 20px; padding-bottom: 20px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); justify-content: space-between;">
+                        <div class="p-stat">
+                            <i data-lucide="banknote" style="width: 18px; height: 18px; color: var(--primary); margin-bottom: 4px;"></i>
+                            <span class="stat-label" style="color: var(--text-muted); font-size: 11px; text-transform: uppercase;">Total Invested</span>
+                            <div class="stat-val" id="bt-total-invested" style="font-size: 20px; font-weight: 700; color: var(--text-light);">$0.00</div>
+                        </div>
+                        <div class="p-stat">
+                            <i data-lucide="trending-up" style="width: 18px; height: 18px; color: var(--success); margin-bottom: 4px;"></i>
+                            <span class="stat-label" style="color: var(--text-muted); font-size: 11px; text-transform: uppercase;">Final Value</span>
+                            <div class="stat-val" id="bt-final-value" style="font-size: 20px; font-weight: 700; color: var(--text-main);">$0.00</div>
+                        </div>
+                        <div class="p-stat">
+                            <i data-lucide="bar-chart-3" style="width: 18px; height: 18px; color: var(--primary); margin-bottom: 4px;"></i>
+                            <span class="stat-label" style="color: var(--text-muted); font-size: 11px; text-transform: uppercase;">Net P/L</span>
+                            <div class="stat-val" id="bt-overall-pnl" style="font-size: 20px; font-weight: 700; color: var(--success);">0.00%</div>
+                        </div>
+                        <div class="p-stat">
+                            <i data-lucide="check-circle" style="width: 18px; height: 18px; color: var(--success); margin-bottom: 4px;"></i>
+                            <span class="stat-label" style="color: var(--text-muted); font-size: 11px; text-transform: uppercase;">Win Rate</span>
+                            <div class="stat-val" id="bt-win-rate" style="font-size: 20px; font-weight: 700; color: var(--success);">0%</div>
+                        </div>
+                    </div>
+                    
+                    <div id="backtest-results-container" style="margin-top: 24px; font-size: 14px;">
+                        <div style="padding: 40px; text-align: center; color: var(--text-muted);">
+                            <i data-lucide="bar-chart-2" style="width: 48px; height: 48px; margin-bottom: 16px; opacity: 0.5;"></i>
+                            <p>No backtest data loaded. Trigger a simulation or refresh to view.</p>
+                        </div>
+                    </div>
+                </div>
+            </div> <!-- End Backtest View -->
+
+            <!-- Discovery View (Hidden by default) -->
+            <div id="view-discovery">
+                 <div class="section-container glass-panel">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px;">
+                        <div>
+                            <h2 style="font-size: 18px; font-weight: 600; color: var(--text-main); margin-bottom: 4px;">Market Discovery</h2>
+                            <p style="color: var(--text-muted); font-size: 13px;">AI-scanned high potential Mid & Small Cap candidates</p>
+                        </div>
+                        <button class="btn btn-primary" id="run-discovery-btn" style="padding: 8px 16px; font-size: 13px;">
+                            <i data-lucide="scan-eye"></i> Scan Market ($0.02)
+                        </button>
+                    </div>
+                    
+                    <div id="discovery-status" style="display: none; padding: 20px; background: rgba(59, 130, 246, 0.1); border: 1px solid var(--primary); border-radius: 12px; margin-bottom: 24px; color: var(--primary);">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div class="spinner"></div>
+                            <span>Scanning Top 50 Nasdaq Stocks + AI Validation... (est. 20s)</span>
+                        </div>
+                    </div>
+
+                    <div id="discovery-results-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px;">
+                        <!-- Discovery cards will be injected here -->
+                    </div>
+                </div>
+            </div> <!-- End Discovery View -->
+
         </main>
     </div>
-    <script src="app.js?v=2"></script>
+    <script src="app.js?v=3"></script>
     <script>
         lucide.createIcons();
     </script>

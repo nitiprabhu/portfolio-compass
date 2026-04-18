@@ -67,6 +67,16 @@ class RecommendationDB:
                 )
             """)
             
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS backtests (
+                    id INTEGER PRIMARY KEY,
+                    run_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    symbols TEXT,
+                    aggregate_stats JSON,
+                    results_json JSON
+                )
+            """)
+            
             conn.commit()
     
     def save_recommendation(self, rec: Dict) -> int:
@@ -134,6 +144,54 @@ class RecommendationDB:
                 "accuracy_percent": round(buy_accuracy, 1),
                 "average_return_percent": round(avg_return, 2)
             }
+                
+    def save_backtest(self, symbols: list, aggregate_stats: dict, results: dict) -> int:
+        """Save a complete backtest run history"""
+        import json
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "INSERT INTO backtests (symbols, aggregate_stats, results_json) VALUES (?, ?, ?)",
+                (",".join(symbols), json.dumps(aggregate_stats), json.dumps(results))
+            )
+            conn.commit()
+            return cursor.lastrowid
+            
+    def get_recent_backtests(self) -> list:
+        """Get summary of recent backtests"""
+        import json
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute("SELECT id, run_date, symbols, aggregate_stats FROM backtests ORDER BY run_date DESC LIMIT 10")
+            
+            results = []
+            for row in cursor.fetchall():
+                results.append({
+                    "id": row["id"],
+                    "run_date": row["run_date"],
+                    "symbols": row["symbols"],
+                    "aggregate_stats": json.loads(row["aggregate_stats"] if row["aggregate_stats"] else "{}")
+                })
+            return results
+            
+    def get_backtest_by_id(self, backtest_id: int) -> dict:
+        """Get a specific backtest run by ID"""
+        import json
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM backtests WHERE id = ?", (backtest_id,))
+            row = cursor.fetchone()
+            if row:
+                return {
+                    "id": row["id"],
+                    "run_date": row["run_date"],
+                    "symbols": row["symbols"],
+                    "aggregate_stats": json.loads(row["aggregate_stats"] if row["aggregate_stats"] else "{}"),
+                    "results_json": json.loads(row["results_json"] if row["results_json"] else "{}")
+                }
+            return None
             
     def get_last_recommendation(self, symbol: str) -> Optional[Dict]:
         """Check for the most recent recommendation for a symbol"""
@@ -168,7 +226,7 @@ class RecommendationEngine:
         self.client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
         self.db = RecommendationDB()
     
-    def analyze_stock(self, symbol: str) -> Optional[Dict]:
+    def analyze_stock(self, symbol: str, bypass_cache: bool = False, save_to_db: bool = True) -> Optional[Dict]:
         """
         Analyze a stock and return structured recommendation
         
@@ -192,12 +250,13 @@ class RecommendationEngine:
         
         try:
             # 1. Deduplication Check
-            last_rec = self.db.get_last_recommendation(symbol)
-            if last_rec:
-                created_at = datetime.strptime(last_rec["created_at"], "%Y-%m-%d %H:%M:%S")
-                if datetime.now() - created_at < timedelta(hours=24):
-                    print(f"Skipping {symbol}: Already analyzed recently ({last_rec['recommendation']}).")
-                    return last_rec
+            if not bypass_cache:
+                last_rec = self.db.get_last_recommendation(symbol)
+                if last_rec:
+                    created_at = datetime.strptime(last_rec["created_at"], "%Y-%m-%d %H:%M:%S")
+                    if datetime.now() - created_at < timedelta(hours=24):
+                        print(f"Skipping {symbol}: Already analyzed recently ({last_rec['recommendation']}).")
+                        return last_rec
 
             # 2. Get Data
             fundamentals = self._get_fundamentals(symbol)
@@ -232,7 +291,8 @@ class RecommendationEngine:
                 tech_score,
                 fundamentals,
                 technicals,
-                news  # Pass news here
+                news,  # Pass news here
+                save_to_db
             )
             
             return rec
@@ -375,6 +435,19 @@ class RecommendationEngine:
             current_vol = hist['Volume'].iloc[-1]
             vol_ratio = current_vol / avg_vol if avg_vol > 0 else 1.0
 
+            # Short-term Price Action Digest (20 Days)
+            daily_20 = hist.tail(20)
+            daily_digest = "DAILY OHLC (Last 20 Days):\n"
+            for d, row in daily_20.iterrows():
+                daily_digest += f"{d.strftime('%Y-%m-%d')}: O:{row['Open']:.2f} H:{row['High']:.2f} L:{row['Low']:.2f} C:{row['Close']:.2f} V:{row['Volume']:,.0f}\n"
+
+            # Macro Price Action Digest (26 Weeks)
+            weekly_hist = ticker.history(period="1y", interval="1wk")
+            weekly_26 = weekly_hist.tail(26)
+            weekly_digest = "WEEKLY OHLC (Last 26 Weeks):\n"
+            for d, row in weekly_26.iterrows():
+                weekly_digest += f"{d.strftime('%Y-%m-%d')}: O:{row['Open']:.2f} H:{row['High']:.2f} L:{row['Low']:.2f} C:{row['Close']:.2f}\n"
+
             return {
                 "symbol": symbol,
                 "current_price": current,
@@ -388,6 +461,8 @@ class RecommendationEngine:
                 "volume_ratio": vol_ratio,
                 "above_sma50": current > sma50,
                 "above_sma200": current > sma200 if sma200 else False,
+                "daily_digest": daily_digest,
+                "weekly_digest": weekly_digest
             }
         except:
             return {"error": f"Could not fetch technicals for {symbol}"}
@@ -516,7 +591,10 @@ Technical Score: {tech_score}/5 (higher = better timing)
 - Volume Ratio: {tech.get('volume_ratio', 0):.2f}x average
 - Volatility: {tech.get('volatility', 0):.1f}%
 - 1Y Return: {tech.get('change_1y', 0):.1f}%
-- Earnings Date: {fund.get('earnings_date', 'N/A')}
+
+PRICE ACTION DIGEST:
+{tech.get('daily_digest', '')}
+{tech.get('weekly_digest', '')}
 
 {history}
 {port_stats}
@@ -528,9 +606,11 @@ MARKET CONTEXT:
 Market Regime: {market_regime}
 
 RULES:
-1. Recommend only if fundamentals score > 9 AND technical score > 2
-2. SELF-REFLECTION: Look at your history for this asset. If you previously lost money or were too early, adapt your current thinking. Be critical of yourself.
-3. Conviction = (fund_score/13 + tech_score/5) / 2 * 100, adjusted by news and self-reflection.
+1. Recommend a BUY if fundamentals score >= 7 AND technical score >= 2. 
+2. If technical score is 4 or 5, you may strongly recommend a BUY even if fundamentals are slightly lower, prioritizing price momentum.
+3. SELF-REFLECTION: Look at your history for this asset. If you previously lost money or were too early, adapt your current thinking. Be critical of yourself.
+4. CHART PATTERNS: Analyze the PRICE ACTION DIGEST for high-probability setups (e.g., Double Bottom, Cup and Handle, Head and Shoulders, or Bullish Flags). Mention any patterns you see in your reasoning and factor them into your conviction.
+5. Conviction = (fund_score/13 + tech_score/5) / 2 * 100, adjusted by news, patterns, and self-reflection.
 
 RESPONSE FORMAT (EXACT):
 RECOMMENDATION: [BUY/SELL/HOLD/WAIT/AVOID]
@@ -552,11 +632,11 @@ OUTLOOK (1-2 sentences):
 
 ---
 
-Be conservative. Avoid losses > beat market. Explain clearly.
+Balance risk and reward intelligently. Be objective and decisive. Explain clearly.
 """
 
     def _parse_recommendation(self, symbol: str, text: str, fund_score: int, 
-                             tech_score: int, fund: Dict, tech: Dict, news: List[Dict] = None) -> Dict:
+                             tech_score: int, fund: Dict, tech: Dict, news: List[Dict] = None, save_dt: bool = True) -> Dict:
         """Parse Claude's response into structured format"""
         
         # Extract values from response
@@ -613,7 +693,8 @@ Be conservative. Avoid losses > beat market. Explain clearly.
             rec_dict["news_json"] = "[]"
         
         # Save to DB
-        self.db.save_recommendation(rec_dict)
+        if save_dt:
+            self.db.save_recommendation(rec_dict)
         
         return rec_dict
     

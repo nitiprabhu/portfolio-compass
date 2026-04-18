@@ -1,6 +1,50 @@
 document.addEventListener('DOMContentLoaded', () => {
     // API endpoints
     const API_URL = '';
+    const viewDashboard = document.getElementById('view-dashboard');
+    const viewPortfolio = document.getElementById('view-portfolio');
+    const viewBacktest = document.getElementById('view-backtest');
+    const viewDiscovery = document.getElementById('view-discovery');
+    
+    const navDashboard = document.getElementById('nav-dashboard');
+    const navPortfolio = document.getElementById('nav-portfolio');
+    const navBacktest = document.getElementById('nav-backtest');
+    const navDiscovery = document.getElementById('nav-discovery');
+
+    function showView(viewId) {
+        document.querySelectorAll('[id^="view-"]').forEach(v => v.classList.add('hidden'));
+        const targetView = document.getElementById(viewId);
+        if (targetView) targetView.classList.remove('hidden');
+        
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        const navId = `nav-${viewId.split('-')[1]}`;
+        const activeNav = document.getElementById(navId);
+        if (activeNav) activeNav.classList.add('active');
+
+        const headerTitle = document.querySelector('.top-header h1');
+        if (headerTitle) {
+            const viewNames = {
+                'view-dashboard': 'Dashboard',
+                'view-portfolio': 'Live Portfolio',
+                'view-backtest': 'Proof of History',
+                'view-discovery': 'Market Discovery'
+            };
+            if (viewNames[viewId]) headerTitle.textContent = viewNames[viewId];
+        }
+
+        if (viewId === 'view-discovery') fetchDiscoveryResults();
+        if (viewId === 'view-portfolio') fetchPortfolio();
+        if (viewId === 'view-backtest') {
+            fetchPastRuns();
+            fetchBacktestResults();
+        }
+    }
+
+    navDashboard?.addEventListener('click', (e) => { e.preventDefault(); showView('view-dashboard'); });
+    navPortfolio?.addEventListener('click', (e) => { e.preventDefault(); showView('view-portfolio'); });
+    navBacktest?.addEventListener('click', (e) => { e.preventDefault(); showView('view-backtest'); });
+    navDiscovery?.addEventListener('click', (e) => { e.preventDefault(); showView('view-discovery'); });
+
 
     // DOM Elements
     const analyzeBtn = document.getElementById('analyze-btn');
@@ -170,16 +214,183 @@ document.addEventListener('DOMContentLoaded', () => {
             statusMsg.classList.remove('hidden');
             statusMsg.style.color = 'var(--danger)';
         } finally {
-            startAnalysisBtn.textContent = 'Start Background Analysis';
+            startAnalysisBtn.textContent = 'Start Analysis';
             startAnalysisBtn.disabled = false;
         }
     });
 
+    // Backtest View Logic
+    const submitBacktestBtn = document.getElementById('submit-backtest');
+    const backtestSymbolInput = document.getElementById('backtest-symbol-input');
+    const refreshBacktestBtn = document.getElementById('refresh-backtest');
+    const backtestResultsContainer = document.getElementById('backtest-results-container');
+    
+
+    if (submitBacktestBtn) {
+        submitBacktestBtn.addEventListener('click', async () => {
+            const symbolsStr = backtestSymbolInput.value.trim();
+            if(!symbolsStr) return;
+            
+            const symbols = symbolsStr.split(',').map(s => s.trim().toUpperCase()).filter(s => s);
+            
+            try {
+                submitBacktestBtn.innerHTML = '<i data-lucide="loader"></i> Starting...';
+                submitBacktestBtn.disabled = true;
+                
+                const res = await fetch(`${API_URL}/api/backtest/run`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ symbols })
+                });
+                const data = await res.json();
+                
+                backtestResultsContainer.innerHTML = `<p style="color: var(--success);">${data.message} Please refresh in a few minutes.</p>`;
+            } catch (error) {
+                backtestResultsContainer.innerHTML = `<p style="color: var(--danger);">Error starting backtest.</p>`;
+            } finally {
+                submitBacktestBtn.innerHTML = '<i data-lucide="history"></i> Start Generating Proof';
+                submitBacktestBtn.disabled = false;
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+            }
+        });
+    }
+
+    const pastRunsSelect = document.getElementById('past-runs-select');
+    const btTotalInvested = document.getElementById('bt-total-invested');
+    const btFinalValue = document.getElementById('bt-final-value');
+    const btOverallPnl = document.getElementById('bt-overall-pnl');
+    const btWinRate = document.getElementById('bt-win-rate');
+    const btAggregateStats = document.getElementById('backtest-aggregate-stats');
+    
+    async function fetchPastRuns() {
+        try {
+            const res = await fetch(`${API_URL}/api/backtests`);
+            const data = await res.json();
+            if (data.status === 'success' && data.runs) {
+                // Keep the first default option
+                pastRunsSelect.innerHTML = '<option value="">Latest Run (Active)</option>';
+                data.runs.forEach(run => {
+                    const opt = document.createElement('option');
+                    opt.value = run.id;
+                    opt.textContent = `[${run.id}] ${new Date(run.run_date).toLocaleString()} - ${run.symbols}`;
+                    pastRunsSelect.appendChild(opt);
+                });
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    }
+    
+    if (pastRunsSelect) {
+        pastRunsSelect.addEventListener('change', (e) => {
+            const runId = e.target.value;
+            fetchBacktestResults(runId);
+        });
+    }
+
+    async function fetchBacktestResults(runId = "") {
+        try {
+            refreshBacktestBtn.style.opacity = '0.5';
+            const url = runId ? `${API_URL}/api/backtests/${runId}` : `${API_URL}/api/backtest/results`;
+            const res = await fetch(url);
+            const data = await res.json();
+            
+            if (data.status === 'success' && data.data) {
+                let html = '';
+                for (const [symbol, result] of Object.entries(data.data)) {
+                    if (result.status === 'Error') {
+                        html += `<div style="margin-bottom: 16px; padding: 12px; background: rgba(239, 68, 68, 0.1); border-radius: 8px;">
+                            <h4 style="font-weight: 600; color: var(--danger);">${symbol} - Error</h4>
+                            <p>${result.error}</p>
+                        </div>`;
+                        continue;
+                    }
+                    
+                    const pnlClass = result.pnl_if_followed >= 0 ? "text-success" : "text-danger";
+                    const pnlColor = result.pnl_if_followed >= 0 ? "var(--success)" : "var(--danger)";
+                    const totalInvestedHtml = result.total_invested ? `$${result.total_invested.toFixed(2)}` : '--';
+                    const finalValueHtml = result.final_value ? `$${result.final_value.toFixed(2)}` : '--';
+                    
+                    html += `<div style="margin-bottom: 24px; padding: 16px; background: rgba(255,255,255,0.02); border-radius: 12px; border: 1px solid var(--border-color);">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                            <h4 style="font-size: 16px; font-weight: 600; color: var(--primary); margin: 0;">${symbol}</h4>
+                            <div style="text-align: right;">
+                                <span style="font-size: 13px; color: var(--text-muted); margin-right: 12px;">Inv: ${totalInvestedHtml} &rarr; ${finalValueHtml}</span>
+                                <span style="font-weight: bold; color: ${pnlColor};">Net: ${result.pnl_if_followed ? result.pnl_if_followed.toFixed(2) : 0}%</span>
+                            </div>
+                        </div>
+                        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                            <thead>
+                                <tr style="border-bottom: 1px solid rgba(255,255,255,0.1); text-align: left; color: var(--text-muted);">
+                                    <th style="padding: 8px;">Date</th>
+                                    <th style="padding: 8px;">Action</th>
+                                    <th style="padding: 8px;">Entry/Price</th>
+                                    <th style="padding: 8px;">Conviction</th>
+                                    <th style="padding: 8px;">Score</th>
+                                    <th style="padding: 8px; width: 40%;">Reasoning / Patterns</th>
+                                </tr>
+                            </thead>
+                            <tbody>`;
+                            
+                    result.trades.forEach(t => {
+                        let badgeClass = 'hold';
+                        if (['BUY', 'STRONG BUY'].includes(t.action)) badgeClass = 'buy';
+                        if (['SELL', 'AVOID'].includes(t.action)) badgeClass = 'sell';
+                        
+                        html += `<tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                            <td style="padding: 8px;">${t.date}</td>
+                            <td style="padding: 8px;"><span class="backtest-trade-badge ${badgeClass}">${t.action}</span></td>
+                            <td style="padding: 8px;">$${Number(t.price).toFixed(2)}</td>
+                            <td style="padding: 8px;">${t.conviction}%</td>
+                            <td style="padding: 8px; font-family: monospace; color: var(--text-muted);">${t.score}</td>
+                            <td style="padding: 8px; font-size: 11px; color: var(--text-muted); line-height: 1.4;">${t.reasoning || '-'}</td>
+                        </tr>`;
+                    });
+                    
+                    html += `</tbody></table></div>`;
+                }
+                
+                backtestResultsContainer.innerHTML = html;
+                
+                // Populate aggregate stats
+                if (data.aggregate_stats) {
+                    btAggregateStats.style.display = 'flex';
+                    btTotalInvested.textContent = `$${data.aggregate_stats.total_invested.toFixed(2)}`;
+                    btFinalValue.textContent = `$${data.aggregate_stats.total_final_value.toFixed(2)}`;
+                    
+                    const pnl = data.aggregate_stats.overall_pnl_pct;
+                    btOverallPnl.textContent = `${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}%`;
+                    btOverallPnl.style.color = pnl >= 0 ? 'var(--success)' : 'var(--danger)';
+                    btWinRate.textContent = `${data.aggregate_stats.win_rate.toFixed(0)}%`;
+                } else {
+                    btAggregateStats.style.display = 'none';
+                }
+                
+                // Update dropdown to match current run id if not specifically chosen
+                if (data.run_id && !runId) {
+                    await fetchPastRuns();
+                    pastRunsSelect.value = data.run_id;
+                }
+                
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+            } else {
+                backtestResultsContainer.innerHTML = `<p style="color: var(--text-muted);">${data.message || 'No recent backtests. Run one to view history.'}</p>`;
+                btAggregateStats.style.display = 'none';
+            }
+        } catch (error) {
+            backtestResultsContainer.innerHTML = `<p style="color: var(--danger);">Failed to load results.</p>`;
+            btAggregateStats.style.display = 'none';
+        } finally {
+            refreshBacktestBtn.style.opacity = '1';
+        }
+    }
+
+    if (refreshBacktestBtn) {
+        refreshBacktestBtn.addEventListener('click', () => fetchBacktestResults());
+    }
+
     // Portfolio Fetch Logic
-    const viewDashboard = document.getElementById('view-dashboard');
-    const viewPortfolio = document.getElementById('view-portfolio');
-    const navDashboard = document.getElementById('nav-dashboard');
-    const navPortfolio = document.getElementById('nav-portfolio');
+
     
     const portInvested = document.getElementById('port-invested');
     const portValue = document.getElementById('port-value');
@@ -238,27 +449,83 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Navigation handlers
-    navDashboard.addEventListener('click', (e) => {
-        e.preventDefault();
-        navDashboard.classList.add('active');
-        navPortfolio.classList.remove('active');
-        viewDashboard.classList.remove('hidden');
-        viewPortfolio.classList.add('hidden');
-        document.querySelector('.top-header h1').textContent = "Dashboard";
-    });
+    // Discovery Logic
+    const runDiscoveryBtn = document.getElementById('run-discovery-btn');
+    const discoveryStatus = document.getElementById('discovery-status');
+    const discoveryGrid = document.getElementById('discovery-results-grid');
 
-    navPortfolio.addEventListener('click', (e) => {
-        e.preventDefault();
-        navPortfolio.classList.add('active');
-        navDashboard.classList.remove('active');
-        viewPortfolio.classList.remove('hidden');
-        viewDashboard.classList.add('hidden');
-        document.querySelector('.top-header h1').textContent = "Live Portfolio Tracker";
-        fetchPortfolio();
-    });
+    async function fetchDiscoveryResults() {
+        try {
+            const res = await fetch(`${API_URL}/api/discover`);
+            const data = await res.json();
+            
+            if (data.status === 'running') {
+                discoveryStatus.style.display = 'block';
+                setTimeout(fetchDiscoveryResults, 3000);
+                return;
+            }
+            
+            discoveryStatus.style.display = 'none';
+            if (data.data && data.data.length > 0) {
+                renderDiscoveryResults(data.data);
+            } else if (data.status === 'idle') {
+                discoveryGrid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: var(--text-muted);">No scan results yet. Start a scan to discover active Nasdaq candidates.</div>';
+            }
+        } catch (e) {
+            console.error("Discovery fetch error:", e);
+        }
+    }
 
-    // Initial load
-    fetchStats();
+    function renderDiscoveryResults(results) {
+        discoveryGrid.innerHTML = '';
+        results.forEach(rec => {
+            const card = document.createElement('div');
+            card.className = 'discovery-card';
+            card.style = 'background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; transition: all 0.3s ease;';
+            card.onmouseover = () => { card.style.background = 'rgba(255,255,255,0.04)'; card.style.borderColor = 'var(--primary)'; };
+            card.onmouseout = () => { card.style.background = 'rgba(255,255,255,0.02)'; card.style.borderColor = 'var(--border-color)'; };
+
+            const badgeClass = rec.recommendation === 'BUY' ? 'buy' : (rec.recommendation === 'SELL' ? 'sell' : 'hold');
+            
+            card.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <div>
+                        <h3 style="font-size: 18px; font-weight: 700; color: var(--text-main); margin: 0;">${rec.symbol}</h3>
+                        <div style="font-size: 11px; color: var(--primary); font-weight: 600;">$${rec.entry_price?.toFixed(2) || '--'}</div>
+                    </div>
+                    <span class="badge ${badgeClass}" style="padding: 4px 10px;">${rec.recommendation}</span>
+                </div>
+                <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px; line-height: 1.4;">
+                    ${rec.reasoning.substring(0, 150)}...
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="font-size: 12px; color: var(--primary);">Conviction: ${rec.conviction}%</div>
+                    <div style="font-size: 12px; font-family: monospace; color: var(--text-muted);">${rec.fundamentals_score}/${rec.technical_score}</div>
+                </div>
+            `;
+            discoveryGrid.appendChild(card);
+        });
+    }
+
+    if (runDiscoveryBtn) {
+        runDiscoveryBtn.addEventListener('click', async () => {
+            try {
+                discoveryStatus.style.display = 'block';
+                runDiscoveryBtn.disabled = true;
+                runDiscoveryBtn.style.opacity = '0.5';
+                
+                await fetch(`${API_URL}/api/discover/run`, { method: 'POST' });
+                fetchDiscoveryResults();
+            } catch (e) {
+                console.error("Discovery run error:", e);
+            }
+        });
+    }
+
+    // Initial fetch to populate the dashboard on load
     fetchRecommendations();
+    fetchStats();
+    
+    // Ensure the initial view is correctly set
+    showView('view-dashboard');
 });

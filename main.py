@@ -9,6 +9,7 @@ import asyncio
 from datetime import datetime, timedelta
 import os
 import httpx
+import json
 
 # ── Load .env early so all os.environ.get() calls below succeed ──
 if os.path.exists(".env"):
@@ -19,8 +20,15 @@ if os.path.exists(".env"):
                 os.environ.setdefault(_k, _v)
 
 from recommendation_engine import RecommendationEngine
+from weekly_backtest import run_backtest_job
+from scanner import MarketScanner
 
 app = FastAPI(title="Portfolio Compass API")
+
+# Global Discovery Cache
+scanner = MarketScanner()
+discovery_results = {"status": "idle", "data": [], "last_run": None}
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -99,6 +107,95 @@ def get_accuracy_stats():
         return {"status": "success", "data": stats}
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
+class BacktestRequest(BaseModel):
+    symbols: List[str]
+
+@app.post("/api/backtest/run")
+def run_backtest_api(req: BacktestRequest, background_tasks: BackgroundTasks):
+    try:
+        with open("backtest_results.json", "w") as f:
+            json.dump({"status": "running", "message": "Backtest is actively processing 90 days of historical data..."}, f)
+    except Exception:
+        pass
+        
+    background_tasks.add_task(run_backtest_job, req.symbols)
+    return {"status": "success", "message": f"Started 3M backtest for {len(req.symbols)} symbols."}
+
+@app.get("/api/backtest/results")
+def get_backtest_results():
+    try:
+        # Check if a backtest is actively running in the background
+        if os.path.exists("backtest_results.json"):
+            with open("backtest_results.json", "r") as f:
+                data = json.load(f)
+            
+            if data.get("status") == "running":
+                return data
+                
+        # Otherwise get the most recent backtest from the DB
+        recent_runs = engine.db.get_recent_backtests()
+        if not recent_runs:
+            return {"status": "pending", "message": "No backtest results found yet."}
+            
+        latest_run = engine.db.get_backtest_by_id(recent_runs[0]["id"])
+        return {"status": "success", "data": latest_run["results_json"], "aggregate_stats": latest_run["aggregate_stats"], "run_id": latest_run["id"]}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+@app.get("/api/backtests")
+def get_past_backtests():
+    try:
+        runs = engine.db.get_recent_backtests()
+        return {"status": "success", "runs": runs}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+        
+@app.get("/api/backtests/{run_id}")
+def get_backtest_by_id(run_id: int):
+    try:
+        run_data = engine.db.get_backtest_by_id(run_id)
+        if not run_data:
+            return {"status": "error", "message": "Backtest run not found"}
+        return {"status": "success", "data": run_data["results_json"], "aggregate_stats": run_data["aggregate_stats"], "run_id": run_data["id"]}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+@app.get("/api/discover")
+def get_discovery_results():
+    return discovery_results
+
+def run_discovery_job():
+    global discovery_results
+    try:
+        discovery_results["status"] = "running"
+        results = scanner.run_scan()
+        discovery_results = {
+            "status": "completed",
+            "data": results,
+            "last_run": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        }
+        # Persist to disk
+        try:
+            with open("discovery_cache.json", "w") as f:
+                json.dump(discovery_results, f)
+        except: pass
+    except Exception as e:
+        discovery_results = {"status": "error", "message": str(e), "data": [], "last_run": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+
+# ── Load Discovery Cache on Startup ──
+if os.path.exists("discovery_cache.json"):
+    try:
+        with open("discovery_cache.json", "r") as f:
+            discovery_results = json.load(f)
+    except:
+        pass
+
+@app.post("/api/discover/run")
+def start_discovery_scan(background_tasks: BackgroundTasks):
+    background_tasks.add_task(run_discovery_job)
+    return {"status": "started", "message": "Market discovery scan initiated in background"}
+
 @app.get("/api/portfolio")
 def get_portfolio():
     try:

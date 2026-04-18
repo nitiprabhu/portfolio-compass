@@ -2,6 +2,9 @@ import os
 import sqlite3
 import pandas as pd
 import yfinance as yf
+import json
+import time
+from datetime import datetime, timedelta
 from recommendation_engine import RecommendationEngine
 
 class WeeklyBacktestEngine(RecommendationEngine):
@@ -31,6 +34,20 @@ class WeeklyBacktestEngine(RecommendationEngine):
             
             change_1y = ((current - hist["Close"].iloc[0]) / hist["Close"].iloc[0] * 100) if len(hist) > 0 else 0
             
+            # Short-term Price Action Digest (20 Days)
+            daily_20 = hist.tail(20)
+            daily_digest = "DAILY OHLC (Last 20 Days):\n"
+            for d, row in daily_20.iterrows():
+                daily_digest += f"{d.strftime('%Y-%m-%d')}: O:{row['Open']:.2f} H:{row['High']:.2f} L:{row['Low']:.2f} C:{row['Close']:.2f}\n"
+
+            # Macro Price Action Digest (26 Weeks)
+            # Fetch longer history for weekly resampling
+            weekly_hist = ticker.history(start="2023-01-01", end=self.current_date)
+            weekly_26 = weekly_hist.resample('W-FRI').last().dropna().tail(26)
+            weekly_digest = "WEEKLY OHLC (Last 26 Weeks):\n"
+            for d, row in weekly_26.iterrows():
+                weekly_digest += f"{d.strftime('%Y-%m-%d')}: O:{row['Open']:.2f} H:{row['High']:.2f} L:{row['Low']:.2f} C:{row['Close']:.2f}\n"
+
             return {
                 "symbol": symbol,
                 "current_price": current,
@@ -42,71 +59,118 @@ class WeeklyBacktestEngine(RecommendationEngine):
                 "change_1y": change_1y,
                 "above_sma50": current > sma50,
                 "above_sma200": current > sma200 if sma200 else False,
+                "daily_digest": daily_digest,
+                "weekly_digest": weekly_digest
             }
         except Exception as e:
             return {"error": str(e)}
 
-if __name__ == "__main__":
-    symbol = "SOXL"
-    start_date = "2026-01-01"
-    end_date = "2026-04-18"
-    
-    print(f"--- WEEKLY BACKTEST: {symbol} ---")
-    print(f"Period: {start_date} to {end_date}")
-    
-    ticker = yf.Ticker(symbol)
-    hist = ticker.history(start=start_date, end=end_date)
-    
-    # Resample to weekly (every Friday)
-    weekly_dates = hist.resample('W-FRI').last().dropna().index.strftime('%Y-%m-%d').tolist()
-    
-    if not weekly_dates:
-        print("No trading data found for this period.")
-        exit(0)
+    def batch_analyze(self, symbols: list) -> dict:
+        """Run 90-day weekly backtest for a batch of symbols"""
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=90)
+        results = {}
         
+        for symbol in symbols:
+            print(f"--- RUNNING BACKTEST: {symbol} ---")
+            try:
+                ticker = yf.Ticker(symbol)
+                hist = ticker.history(start=start_date.strftime('%Y-%m-%d'), end=end_date.strftime('%Y-%m-%d'))
+                
+                if hist.empty:
+                    continue
+                    
+                weekly_dates = hist.resample('W-FRI').last().dropna().index.strftime('%Y-%m-%d').tolist()
+                
+                symbol_trades = []
+                for i, date_str in enumerate(weekly_dates):
+                    print(f"  [{symbol}] Progress: {i+1}/{len(weekly_dates)} (Analyzing week of {date_str})...")
+                    self.set_date(date_str)
+                    rec = self.analyze_stock(symbol, bypass_cache=True, save_to_db=False)
+                    
+                    if not rec:
+                        print(f"  [{symbol}] Warning: No recommendation returned for {date_str}")
+                        continue
+                        
+                    symbol_trades.append({
+                        "date": date_str,
+                        "action": rec.get("recommendation"),
+                        "price": rec.get("entry_price"),
+                        "conviction": rec.get("conviction"),
+                        "score": f"{rec.get('fundamentals_score')}/{rec.get('technical_score')}",
+                        "reasoning": rec.get("reasoning", "")
+                    })
+                    time.sleep(0.5)
+                
+                # Path-dependent 90-day trajectory valuation
+                shares_owned = 0
+                realized_cash = 0
+                total_invested = 0
+                
+                try:
+                    current_price = yf.Ticker(symbol).history(period="1d")["Close"].iloc[-1]
+                except:
+                    current_price = symbol_trades[-1]["price"] if symbol_trades else 0
+                    
+                for t in symbol_trades:
+                    act = t["action"]
+                    prc = t["price"]
+                    
+                    if act in ["BUY", "STRONG BUY"] and prc > 0:
+                        shares_owned += (100.0 / prc)
+                        total_invested += 100.0
+                    elif act in ["SELL", "AVOID"] and shares_owned > 0:
+                        realized_cash += (shares_owned * prc)
+                        shares_owned = 0
+                
+                final_value = realized_cash + (shares_owned * current_price)
+                pnl = 0
+                if total_invested > 0:
+                    pnl = ((final_value - total_invested) / total_invested) * 100
+                
+                results[symbol] = {
+                    "trades": symbol_trades,
+                    "current_price": current_price,
+                    "pnl_if_followed": pnl,
+                    "total_invested": total_invested,
+                    "final_value": final_value,
+                    "status": "Completed"
+                }
+            except Exception as e:
+                results[symbol] = {"status": "Error", "error": str(e), "pnl_if_followed": 0, "total_invested": 0, "final_value": 0}
+                
+        return results
+
+def run_backtest_job(symbols: list):
     engine = WeeklyBacktestEngine()
+    results = engine.batch_analyze(symbols)
     
-    last_rec = None
-    trades = []
+    # Calculate Aggregate Statistics
+    total_inv = sum(res.get("total_invested", 0) for res in results.values())
+    total_val = sum(res.get("final_value", 0) for res in results.values())
+    overall_pnl = ((total_val - total_inv) / total_inv * 100) if total_inv > 0 else 0
     
-    import time
+    wins = sum(1 for res in results.values() if res.get("pnl_if_followed", 0) > 0)
+    completed_count = sum(1 for res in results.values() if res.get("status") == "Completed")
+    accuracy = (wins / completed_count * 100) if completed_count > 0 else 0
     
-    print("Running analysis explicitly on a weekly basis...")
-    print("-" * 60)
+    aggregate_stats = {
+        "total_invested": total_inv,
+        "total_final_value": total_val,
+        "overall_pnl_pct": overall_pnl,
+        "win_rate": accuracy
+    }
     
-    for date_str in weekly_dates:
-        # Check if the date is in the history safely
-        # Sometimes resample outputs dates that don't literally exist in index if market closed, but .last() grabs the last valid. 
-        # Actually it's safer to just run on the Fridays outputted since 'end=' date works either way in yfinance.
-        engine.set_date(date_str)
-        rec = engine.analyze_stock(symbol)
+    # Save the full structured history to DB
+    run_id = engine.db.save_backtest(symbols, aggregate_stats, results)
+    
+    # For UI progress reset, delete the lock file
+    if os.path.exists("backtest_results.json"):
+        os.remove("backtest_results.json")
         
-        if not rec:
-            continue
-            
-        current_action = rec.get("recommendation")
-        price = rec.get("entry_price")
-        
-        print(f"[{date_str}] Signal -> {current_action}")
-        print(f"   Price: ${price:.2f} | Conviction: {rec.get('conviction')}%")
-        print(f"   Scores -> Fund: {rec.get('fundamentals_score')}/13 | Tech: {rec.get('technical_score')}/5")
-        print(f"   Why: {rec.get('reasoning').split('REASONS')[0].strip()[-80:]}")
-        print("-" * 60)
-        
-        trades.append({
-            "date": date_str,
-            "action": current_action,
-            "price": price
-        })
-        
-        # Sleep slightly to avoid overwhelming rate limits
-        time.sleep(0.5)
-        
-    print("\n--- SUMMARY OF SIGNALS ---")
-    current_price = hist["Close"].iloc[-1]
-    print(f"Current Price (Apr 18): ${current_price:.2f}")
-    if trades:
-        first_buy = next((t for t in trades if t["action"] == "BUY"), None)
-        if first_buy:
-            pnl = ((current_price - first_buy["price"]) / first_buy["price"]) * 100
-            print(f"If bought on first BUY signal ({first_buy['date']} at ${first_buy['price']:.2f}): {pnl:.2f}% return.")
+    print(f"Backtest Job {run_id} Completed.")
+
+if __name__ == "__main__":
+    symbols = ["AAPL", "GOOGL"]
+    run_backtest_job(symbols)
+
