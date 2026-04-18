@@ -457,11 +457,9 @@ def send_weekly_status():
 def check_sector_concentration() -> Optional[str]:
     """Returns a warning message if any single sector exceeds 40% of active BUY positions."""
     sector_map = {
-        "AAPL": "Technology", "NVDA": "Technology", "MSFT": "Technology",
-        "AMD": "Technology", "SOXX": "Technology", "SOXL": "Technology",
-        "GOOGL": "Technology", "TSLA": "Technology",
-        "ASTS": "Industrials", "RKLB": "Industrials",
-        "IOT": "Technology", "PLTR": "Technology"
+        "AVGO": "Technology", "GOOGL": "Technology", "SMH": "Technology", "INTC": "Technology",
+        "ARKW": "Technology", "STEP": "Financial Services", "VNT": "Industrials", "CPNG": "Consumer Cyclical",
+        "CPER": "Basic Materials", "URA": "Energy", "CNXT": "International/ETF"
     }
     try:
         with sqlite3.connect(engine.db.db_path) as conn:
@@ -557,7 +555,7 @@ async def background_daily_analysis():
 
         # ── Daily Analysis (Monday–Friday) ─────
         if current_day < 5 and last_daily_analysis_date != now.date():
-            symbols_to_track = ["AAPL", "NVDA", "MSFT", "SOXX", "SOXL", "ASTS", "RKLB", "IOT", "PLTR", "AMD", "GOOGL", "TSLA"]
+            symbols_to_track = ["AVGO", "GOOGL", "CPER", "URA", "VNT", "CPNG", "SMH", "CNXT", "ARKW", "STEP", "INTC"]
             try:
                 print(f"[{now}] Executing Automated Daily Analysis...")
                 engine.batch_analyze(symbols_to_track)
