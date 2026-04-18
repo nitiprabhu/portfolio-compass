@@ -199,9 +199,10 @@
                                     <th>ENTRY</th>
                                     <th>LIVE PRICE</th>
                                     <th>RETURN</th>
-                                    <th>TARGET</th>
-                                    <th>STOP LOSS</th>
+                                    <th>AI VERDICT</th>
+                                    <th>DISTANCE</th>
                                     <th>STATUS</th>
+                                    <th>TREND</th>
                                 </tr>
                             </thead>
                             <tbody id="portfolio-tbody">
@@ -306,8 +307,10 @@
                             <p style="color: var(--text-muted); font-size: 13px;">90-day active monitoring with automated paper trading</p>
                         </div>
                         <div style="display: flex; gap: 8px;">
-                            <input type="text" id="watchlist-add-input" placeholder="Symbol (e.g. TSLA)" style="background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); color: white; padding: 10px 14px; border-radius: 8px; font-size: 13px; outline: none;">
-                            <button class="btn btn-primary" id="watchlist-add-btn" style="padding: 10px 18px;">+ Add Symbol</button>
+                            <input type="text" id="watchlist-add-input" class="text-input" placeholder="Symbol (e.g. AMD)" style="width: 150px; padding: 6px 12px; font-size: 13px;">
+                            <button class="btn btn-primary" id="watchlist-add-btn" style="padding: 8px 16px; font-size: 13px;">
+                                <i data-lucide="plus"></i> Add
+                            </button>
                         </div>
                     </div>
 
