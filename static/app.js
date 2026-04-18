@@ -10,6 +10,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const navPortfolio = document.getElementById('nav-portfolio');
     const navBacktest = document.getElementById('nav-backtest');
     const navDiscovery = document.getElementById('nav-discovery');
+    const navWatchlist = document.getElementById('nav-watchlist');
+    const navCosts = document.getElementById('nav-costs');
 
     function showView(viewId) {
         document.querySelectorAll('[id^="view-"]').forEach(v => v.classList.add('hidden'));
@@ -27,7 +29,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 'view-dashboard': 'Dashboard',
                 'view-portfolio': 'Live Portfolio',
                 'view-backtest': 'Proof of History',
-                'view-discovery': 'Market Discovery'
+                'view-discovery': 'Market Discovery',
+                'view-watchlist': 'Model Watchlist',
+                'view-costs': 'Cost Analysis'
             };
             if (viewNames[viewId]) headerTitle.textContent = viewNames[viewId];
         }
@@ -38,12 +42,16 @@ document.addEventListener('DOMContentLoaded', () => {
             fetchPastRuns();
             fetchBacktestResults();
         }
+        if (viewId === 'view-watchlist') fetchWatchlist();
+        if (viewId === 'view-costs') fetchCostAnalysis();
     }
 
     navDashboard?.addEventListener('click', (e) => { e.preventDefault(); showView('view-dashboard'); });
     navPortfolio?.addEventListener('click', (e) => { e.preventDefault(); showView('view-portfolio'); });
     navBacktest?.addEventListener('click', (e) => { e.preventDefault(); showView('view-backtest'); });
     navDiscovery?.addEventListener('click', (e) => { e.preventDefault(); showView('view-discovery'); });
+    navWatchlist?.addEventListener('click', (e) => { e.preventDefault(); showView('view-watchlist'); });
+    navCosts?.addEventListener('click', (e) => { e.preventDefault(); showView('view-costs'); });
 
 
     // DOM Elements
@@ -525,6 +533,110 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initial fetch to populate the dashboard on load
     fetchRecommendations();
     fetchStats();
+
+    // Watchlist & Paper Trading logic
+    const watchlistTbody = document.getElementById('watchlist-tbody');
+    const watchlistAddBtn = document.getElementById('watchlist-add-btn');
+    const watchlistAddInput = document.getElementById('watchlist-add-input');
+
+    async function fetchWatchlist() {
+        try {
+            const res = await fetch(`${API_URL}/api/watchlist`);
+            const data = await res.json();
+            if (data.status === 'success') {
+                renderWatchlist(data.data);
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    function renderWatchlist(items) {
+        watchlistTbody.innerHTML = '';
+        if (items.length === 0) {
+            watchlistTbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted)">Watchlist is empty. Add a symbol above to start 90-day tracking.</td></tr>';
+            return;
+        }
+
+        items.forEach(item => {
+            const tr = document.createElement('tr');
+            const pnl = item.trade ? ((item.trade.current_price - item.trade.entry_price) / item.trade.entry_price * 100).toFixed(2) : '0.00';
+            const pnlClass = parseFloat(pnl) >= 0 ? 'positive' : 'negative';
+            
+            tr.innerHTML = `
+                <td><div class="asset-info"><strong>${item.symbol}</strong></div></td>
+                <td>${new Date(item.added_at).toLocaleDateString()}</td>
+                <td>${new Date(item.expires_at).toLocaleDateString()}</td>
+                <td><span class="badge ${item.trade ? 'badge-success' : 'badge-info'}">${item.trade ? 'TRACKING' : 'PENDING'}</span></td>
+                <td><span class="stat-trend ${pnlClass}">${pnl}%</span></td>
+                <td>
+                    <button class="btn btn-icon remove-watchlist-btn" data-symbol="${item.symbol}">
+                        <i data-lucide="trash-2" style="width:16px;height:16px;"></i>
+                    </button>
+                </td>
+            `;
+            watchlistTbody.appendChild(tr);
+        });
+        lucide.createIcons();
+        
+        document.querySelectorAll('.remove-watchlist-btn').forEach(btn => {
+            btn.onclick = async () => {
+                const sym = btn.dataset.symbol;
+                await fetch(`${API_URL}/api/watchlist/${sym}`, { method: 'DELETE' });
+                fetchWatchlist();
+            };
+        });
+    }
+
+    watchlistAddBtn?.addEventListener('click', async () => {
+        const symbol = watchlistAddInput.value.toUpperCase().trim();
+        if (!symbol) return;
+        await fetch(`${API_URL}/api/watchlist?symbol=${symbol}`, { method: 'POST' });
+        watchlistAddInput.value = '';
+        fetchWatchlist();
+    });
+
+    // Cost Analysis Logic
+    const costTotalSpent = document.getElementById('cost-total-spent');
+    const costToday = document.getElementById('cost-today');
+    const costProjection = document.getElementById('cost-projection');
+    const costTotalCalls = document.getElementById('cost-total-calls');
+    const costsTbody = document.getElementById('costs-tbody');
+
+    async function fetchCostAnalysis() {
+        try {
+            const res = await fetch(`${API_URL}/api/cost-analysis`);
+            const data = await res.json();
+            if (data.status === 'success') {
+                renderCostAnalysis(data);
+            }
+        } catch (e) { console.error(e); }
+    }
+
+    function renderCostAnalysis(data) {
+        costTotalSpent.textContent = `$${data.summary.total_cost.toFixed(4)}`;
+        costToday.textContent = `$${data.summary.today_cost.toFixed(4)}`;
+        costProjection.textContent = `$${data.summary.monthly_projection.toFixed(2)}`;
+        costTotalCalls.textContent = data.summary.total_calls;
+
+        costsTbody.innerHTML = '';
+        if (data.history.length === 0) {
+            costsTbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted)">No usage recorded yet. Run analysis to see costs.</td></tr>';
+            return;
+        }
+
+        data.history.forEach(item => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td style="font-size: 11px; color: var(--text-muted);">${new Date(item.timestamp).toLocaleString()}</td>
+                <td style="font-family: monospace; font-size: 11px;">${item.model}</td>
+                <td>${item.input_tokens}</td>
+                <td>${item.output_tokens}</td>
+                <td style="font-weight: bold; color: var(--text-main);">$${item.cost.toFixed(4)}</td>
+            `;
+            costsTbody.appendChild(tr);
+        });
+    }
     
     // Ensure the initial view is correctly set
     showView('view-dashboard');
