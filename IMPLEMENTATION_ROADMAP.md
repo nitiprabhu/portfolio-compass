@@ -605,12 +605,21 @@ Year 1 Net profit: ~$90K (investing in growth)
 - [x] Achieve 55%+ accuracy
 - [ ] Identify 10 potential beta customers
 
-### Week 4: Find Beta Customers (Feb 5-9) [IN PROGRESS]
-- [ ] Close 5 beta customers at $1K/month
+### Week 4: Multi-Agent Hub (Feb 5-9) [IN PROGRESS]
+- [x] Close 5 beta customers at $1K/month
 - [x] Deliver first recommendations
-- [x] Get feedback
+- [x] Implement AI Research Assistant PoC (Context-Augmented RAG)
+- [ ] Add Vector Store (ChromaDB) for historical transcripts
+- [ ] Implement Streaming Responses (SSE) for Research Assistant
 
 ---
+
+## ARCHITECTURE OVERVIEW
+The "Portfolio Compass" is an **Agentic AI Suite** consisting of:
+1. **The Scanner**: Traditional logic filtering for top growth candidates.
+2. **The Evaluator**: Claude-powered reasoning for high-conviction buy/sell signals.
+3. **The Researcher**: A deep-dive narrative agent specializing in unstructured text analysis.
+4. **The Monitor**: Autonomous background task for daily portfolio rebalancing and alerts.
 
 ## THE ONE THING
 
