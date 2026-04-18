@@ -343,7 +343,11 @@ def get_portfolio():
                     live_price = entry
                     
                 # Trailing Stop Logic
-                cursor = conn.cursor()
+                # Link to latest recommendation to fix Accuracy tracking
+                cursor.execute("SELECT id FROM recommendations WHERE symbol = ? ORDER BY created_at DESC LIMIT 1", (symbol,))
+                rec_row = cursor.fetchone()
+                rec_id = rec_row[0] if rec_row else None
+
                 cursor.execute("SELECT peak_price FROM outcomes WHERE symbol = ? AND status = 'OPEN'", (symbol,))
                 row = cursor.fetchone()
                 
@@ -354,11 +358,11 @@ def get_portfolio():
                         conn.execute("UPDATE outcomes SET peak_price = ?, current_price = ? WHERE symbol = ? AND status = 'OPEN'", (peak_price, live_price, symbol))
                 else:
                     peak_price = max(entry, live_price)
-                    # Insert if it doesn't exist yet but it's an active position
+                    # Insert with recommendation_id to enable accuracy calculation
                     conn.execute("""
-                        INSERT INTO outcomes (symbol, entry_price, current_price, peak_price, status)
-                        VALUES (?, ?, ?, ?, 'OPEN')
-                    """, (symbol, entry, live_price, peak_price))
+                        INSERT INTO outcomes (symbol, entry_price, current_price, peak_price, status, recommendation_id)
+                        VALUES (?, ?, ?, ?, 'OPEN', ?)
+                    """, (symbol, entry, live_price, peak_price, rec_id))
                 
                 # Dynamic Trailing Stop (10% below peak, but never below original stop)
                 active_stop = None
@@ -692,7 +696,6 @@ async def background_daily_analysis():
                 # Full technical analysis for your actual holdings
                 engine.batch_analyze(symbols_to_track)
                 
-<<<<<<< HEAD
                 # Check for BUY Alerts
                 time_threshold = (now - timedelta(minutes=15)).strftime('%Y-%m-%d %H:%M:%S')
                 with sqlite3.connect(engine.db.db_path) as conn:
@@ -772,15 +775,6 @@ async def background_daily_analysis():
                         # Update current price for all open watchlist positions
                         cursor.execute("UPDATE paper_trades SET current_price = ?, current_value = quantity * ? WHERE symbol = ? AND status = 'OPEN'", (price, price, ws))
                     
-=======
-                # Market Deep Scan (Top 10 Momentum Leaders)
-                from scanner import MarketScanner
-                scanner = MarketScanner()
-                print(f"[{now}] Beginning Daily Market Deep Scan...")
-                scanner.run_scan()
-                
-                # Check for any new alerts after analysis
->>>>>>> origin/main
                 monitor_portfolio_alerts()
                 
                 # ── Critical Event Detector (Premium Alerts) ─────
@@ -850,20 +844,9 @@ async def background_daily_analysis():
                 last_daily_analysis_date = now.date()
                 print(f"[{now}] Daily Analysis complete.")
 
-                last_daily_analysis_date = now.date()
-                print(f"[{now}] Daily Analysis & Deep Scan complete.")
-
             except Exception as e:
                 print(f"Automated analysis failed: {e}")
                 send_telegram_alert(f"⚠️ Engine Error: {e}")
-<<<<<<< HEAD
-        
-        elif current_day >= 5 and current_day != 6: # Saturday
-            if last_daily_analysis_date != now.date():
-                print(f"[{now}] Market is closed. Resting.")
-                last_daily_analysis_date = now.date()
-=======
->>>>>>> origin/main
         
         elif current_day >= 5 and current_day != 6: # Saturday
             if last_daily_analysis_date != now.date():

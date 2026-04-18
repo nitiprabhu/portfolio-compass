@@ -15,7 +15,7 @@ class WeeklyBacktestEngine(RecommendationEngine):
     def set_date(self, date_str):
         self.current_date = date_str
 
-    def _get_technicals(self, symbol: str) -> dict:
+    def _get_technicals(self, symbol: str, sector: str = "Unknown", **kwargs) -> dict:
         try:
             ticker = yf.Ticker(symbol)
             hist = ticker.history(start="2024-01-01", end=self.current_date)

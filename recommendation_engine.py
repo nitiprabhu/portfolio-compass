@@ -26,29 +26,33 @@ import anthropic
 # ============================================================================
 
 class RecommendationDB:
-    """SQLite database for recommendations and outcomes"""
-    
+
     def __init__(self, db_path: str = "recommendations.db"):
         self.db_path = db_path
         self.init_db()
-    
+
     def init_db(self):
-        """Create tables if they don't exist"""
         with sqlite3.connect(self.db_path) as conn:
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS recommendations (
                     id INTEGER PRIMARY KEY,
-                    symbol TEXT NOT NULL,
-                    recommendation TEXT NOT NULL,  -- BUY, SELL, HOLD
-                    conviction INTEGER,  -- 0-100
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    symbol TEXT,
+                    recommendation TEXT,
+                    conviction INTEGER,
                     entry_price REAL,
                     stop_loss REAL,
                     target_price REAL,
                     fundamentals_score INTEGER,
                     technical_score INTEGER,
                     reasoning TEXT,
-                    risks TEXT,  -- JSON list
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    reasons_json TEXT,
+                    risks_json TEXT,
+                    outlook TEXT,
+                    news_sentiment REAL,
+                    news_json TEXT,
+                    atr_stop REAL,
+                    atr14 REAL
                 )
             """)
             
@@ -58,13 +62,12 @@ class RecommendationDB:
                     recommendation_id INTEGER,
                     symbol TEXT,
                     entry_price REAL,
-                    entry_date TIMESTAMP,
+                    entry_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     current_price REAL,
-                    peak_price REAL, -- Track highest price to calculate trailing stops
-                    check_date TIMESTAMP,
-                    status TEXT,
+                    check_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    status TEXT, -- OPEN, CLOSED
                     return_pct REAL,
-                    FOREIGN KEY (recommendation_id) REFERENCES recommendations(id)
+                    peak_price REAL
                 )
             """)
             
@@ -79,14 +82,13 @@ class RecommendationDB:
             """)
             
             conn.execute("""
-            conn.execute("""
                 CREATE TABLE IF NOT EXISTS api_usage (
                     id INTEGER PRIMARY KEY,
-                    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    model TEXT,
+                    model TEXT NOT NULL,
                     input_tokens INTEGER,
                     output_tokens INTEGER,
-                    cost REAL
+                    cost REAL,
+                    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
 
@@ -113,20 +115,9 @@ class RecommendationDB:
                     closed_at TIMESTAMP
                 )
             """)
-
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS api_usage (
-                    id INTEGER PRIMARY KEY,
-                    model TEXT NOT NULL,
-                    input_tokens INTEGER,
-                    output_tokens INTEGER,
-                    cost REAL,
-                    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
             
             conn.commit()
-    
+
     def log_api_usage(self, model: str, input_tokens: int, output_tokens: int, cost: float):
         """Log API usage for cost tracking"""
         with sqlite3.connect(self.db_path) as conn:
@@ -134,16 +125,7 @@ class RecommendationDB:
                 INSERT INTO api_usage (model, input_tokens, output_tokens, cost)
                 VALUES (?, ?, ?, ?)
             """, (model, input_tokens, output_tokens, cost))
-                    added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    expires_at TIMESTAMP
-                )
-            """)
 
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS paper_trades (
-                    id INTEGER PRIMARY KEY,
-            conn.commit()
-    
     def save_recommendation(self, rec: Dict) -> int:
         """Save recommendation and return ID"""
         with sqlite3.connect(self.db_path) as conn:
@@ -332,11 +314,18 @@ class RecommendationEngine:
             history = self._get_performance_history(symbol)
             port_stats = self._get_portfolio_stats()
 
-            if "error" in fundamentals or "error" in technicals:
+            if "error" in technicals:
+                print(f"Skipping {symbol}: Technical data error - {technicals['error']}")
                 return None
-
+            
+            # Fundamentals are optional for backtests where history is often spotty
+            if "error" in fundamentals:
+                print(f"Proceeding with Tech-only analysis for {symbol} (Fundamentals missing)")
+                fund_score = 5 # Neutral default
+            else:
+                fund_score = self._score_fundamentals(fundamentals)
+            
             # 3. Score
-            fund_score = self._score_fundamentals(fundamentals)
             tech_score = self._score_technicals(technicals, regime)   # pass regime dict
 
             # 4. Ask Claude for recommendation
