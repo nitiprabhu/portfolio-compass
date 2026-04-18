@@ -325,8 +325,8 @@ def send_weekly_status():
         msg = (
             f"📊 <b>Weekly Strategic Review</b> 📊\n\n"
             f"✨ <b>Activity:</b> {total_trades or 0} active positions tracked\n"
-            f"📈 <b>Avg Return:</b> {avg_return:.2f}% (this week)\n"
-            f"🚀 <b>Best Performer:</b> {top[0] if top else 'N/A'} (+{top[1]:.1f}%)\n"
+            f"📈 <b>Avg Return:</b> {avg_return or 0:.2f}% (this week)\n"
+            f"🚀 <b>Best Performer:</b> {top[0] if top else 'N/A'} (+{top[1] if top else 0:.1f}%)\n"
             f"💰 <b>Est. Portfolio:</b> ${portfolio_value:,.2f}\n\n"
             f"<i>Market is closed. Have a great weekend!</i>"
         )
@@ -338,11 +338,9 @@ def send_weekly_status():
 def check_sector_concentration() -> Optional[str]:
     """Returns a warning message if any single sector exceeds 40% of active BUY positions."""
     sector_map = {
-        "AAPL": "Technology", "NVDA": "Technology", "MSFT": "Technology",
-        "AMD": "Technology", "SOXX": "Technology", "SOXL": "Technology",
-        "GOOGL": "Technology", "TSLA": "Technology",
-        "ASTS": "Industrials", "RKLB": "Industrials",
-        "IOT": "Technology", "PLTR": "Technology"
+        "AVGO": "Technology", "GOOGL": "Technology", "SMH": "Technology", "INTC": "Technology",
+        "ARKW": "Technology", "STEP": "Financial Services", "VNT": "Industrials", "CPNG": "Consumer Cyclical",
+        "CPER": "Basic Materials", "URA": "Energy", "CNXT": "International/ETF"
     }
     try:
         with sqlite3.connect(engine.db.db_path) as conn:
@@ -422,8 +420,9 @@ def monitor_portfolio_alerts():
 
 
 async def background_daily_analysis():
-    """Runs automatically to keep everything updated and handle Sunday reports"""
+    """Runs automatically once per day to update analysis and handle reports"""
     last_sunday_report_date = None
+    last_daily_analysis_date = None
     
     while True:
         now = datetime.now()
@@ -435,45 +434,40 @@ async def background_daily_analysis():
             send_weekly_status()
             last_sunday_report_date = now.date()
 
-        if current_day < 5:  # Monday–Friday only
-            symbols_to_track = ["AAPL", "NVDA", "MSFT", "SOXX", "SOXL", "ASTS", "RKLB", "IOT", "PLTR", "AMD", "GOOGL", "TSLA"]
+        # ── Daily Analysis (Monday–Friday) ─────
+        if current_day < 5 and last_daily_analysis_date != now.date():
+            symbols_to_track = ["AVGO", "GOOGL", "CPER", "URA", "VNT", "CPNG", "SMH", "CNXT", "ARKW", "STEP", "INTC"]
             try:
                 print(f"[{now}] Executing Automated Daily Analysis...")
+                # Full technical analysis for your actual holdings
                 engine.batch_analyze(symbols_to_track)
                 
-                # (BUY Alerts code remains same...)
-                time_threshold = (now - timedelta(minutes=15)).strftime('%Y-%m-%d %H:%M:%S')
-                with sqlite3.connect(engine.db.db_path) as conn:
-                    cursor = conn.cursor()
-                    cursor.execute("""
-                        SELECT symbol, recommendation, conviction, entry_price, target_price, stop_loss 
-                        FROM recommendations 
-                        WHERE created_at > ? AND recommendation = 'BUY'
-                    """, (time_threshold,))
-                    fresh_buys = cursor.fetchall()
+                # Market Deep Scan (Top 10 Momentum Leaders)
+                from scanner import MarketScanner
+                scanner = MarketScanner()
+                print(f"[{now}] Beginning Daily Market Deep Scan...")
+                scanner.run_scan()
                 
-                if fresh_buys:
-                    alert_text = "🚨 <b>Portfolio Compass — New BUY Signals</b> 🚨\n\n"
-                    for b in fresh_buys:
-                        sym, action, conv, entry, target, stop = b
-                        alert_text += f"📈 <b>{sym}</b>: {action} ({conv}% Conviction)\n"
-                        alert_text += f"💵 Entry: ${entry:.2f} | Target: ${target:.2f} | Stop: ${stop:.2f}\n\n"
-                    send_telegram_alert(alert_text)
-
+                # Check for any new alerts after analysis
                 monitor_portfolio_alerts()
                 
                 sector_warning = check_sector_concentration()
                 if sector_warning:
                     send_telegram_alert(sector_warning)
 
+                last_daily_analysis_date = now.date()
+                print(f"[{now}] Daily Analysis & Deep Scan complete.")
+
             except Exception as e:
                 print(f"Automated analysis failed: {e}")
                 send_telegram_alert(f"⚠️ Engine Error: {e}")
-        else:
-            if current_day != 6: # Saturday
-                print(f"[{now}] Market is closed. Resting.")
         
-        await asyncio.sleep(3600)  # Check every hour for easier logic tracking
+        elif current_day >= 5 and current_day != 6: # Saturday
+            if last_daily_analysis_date != now.date():
+                print(f"[{now}] Market is closed. Resting.")
+                last_daily_analysis_date = now.date()
+        
+        await asyncio.sleep(3600)  # Check every hour, but execute only once per day
 
 @app.on_event("startup")
 async def startup_event():

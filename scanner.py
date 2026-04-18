@@ -122,11 +122,11 @@ class MarketScanner:
                 continue
                 
         candidates.sort(key=lambda x: x['score'], reverse=True)
-        top_picks = candidates[:5]
+        top_picks = candidates[:10]
         
         # 4. AI Deep-Dive & Telegram Alerts
         findings = []
-        print(f"Top 5 candidates identified: {[p['symbol'] for p in top_picks]}")
+        print(f"Top 10 candidates identified: {[p['symbol'] for p in top_picks]}")
         for pick in top_picks:
             symbol = pick['symbol']
             print(f"  AI Validating: {symbol}...")
