@@ -436,11 +436,16 @@ def send_weekly_status():
             cursor.execute("SELECT SUM(current_price * 10000 / entry_price) FROM outcomes WHERE status = 'OPEN'")
             portfolio_value = cursor.fetchone()[0] or 0
 
+        # Use zero as default for formatting
+        display_avg = avg_return if avg_return is not None else 0.0
+        display_top_name = top[0] if top else "N/A"
+        display_top_val = top[1] if top else 0.0
+        
         msg = (
             f"📊 <b>Weekly Strategic Review</b> 📊\n\n"
             f"✨ <b>Activity:</b> {total_trades or 0} active positions tracked\n"
-            f"📈 <b>Avg Return:</b> {avg_return:.2f}% (this week)\n"
-            f"🚀 <b>Best Performer:</b> {top[0] if top else 'N/A'} (+{top[1]:.1f}%)\n"
+            f"📈 <b>Avg Return:</b> {display_avg:.2f}% (this week)\n"
+            f"🚀 <b>Best Performer:</b> {display_top_name} (+{display_top_val:.1f}%)\n"
             f"💰 <b>Est. Portfolio:</b> ${portfolio_value:,.2f}\n\n"
             f"<i>Market is closed. Have a great weekend!</i>"
         )
