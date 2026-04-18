@@ -65,12 +65,18 @@ class AnalysisRequest(BaseModel):
 
 @app.get("/api/recommendations")
 def get_all_recommendations():
-    """Returns the 50 most recent recommendations — used by the Dashboard table."""
+    """Returns recommendations for symbols in watchlist or active portfolio — used by the Dashboard table."""
     try:
         with sqlite3.connect(engine.db.db_path) as conn:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
-            cursor.execute("SELECT * FROM recommendations ORDER BY created_at DESC LIMIT 50")
+            # Filter to show only symbols user is tracking in watchlist or has open in outcomes
+            cursor.execute("""
+                SELECT r.* FROM recommendations r
+                WHERE r.symbol IN (SELECT symbol FROM watchlist)
+                   OR r.symbol IN (SELECT symbol FROM outcomes WHERE status = 'OPEN')
+                ORDER BY r.created_at DESC LIMIT 50
+            """)
             rows = cursor.fetchall()
             return {"status": "success", "data": [dict(ix) for ix in rows]}
     except Exception as e:
@@ -354,7 +360,11 @@ def get_portfolio():
                     """, (symbol, entry, live_price, peak_price))
                 
                 # Dynamic Trailing Stop (10% below peak, but never below original stop)
-                active_stop = max(stop, peak_price * 0.90) if stop else peak_price * 0.90
+                active_stop = None
+                if peak_price is not None:
+                    active_stop = peak_price * 0.90
+                    if stop is not None:
+                        active_stop = max(stop, active_stop)
                 
                 pnl_pct = ((live_price - entry) / entry) * 100
                 shares = 10000 / entry
@@ -362,10 +372,10 @@ def get_portfolio():
                 total_current += (shares * live_price)
                 
                 alert = "ON TRACK"
-                if live_price >= target: alert = "🎯 HIT TARGET"
-                elif live_price <= active_stop: alert = "🛑 STOP TRIGGERED"
+                if target is not None and live_price >= target: alert = "🎯 HIT TARGET"
+                elif active_stop is not None and live_price <= active_stop: alert = "🛑 STOP TRIGGERED"
                 elif pnl_pct < -5: alert = "⚠️ UNDERPERFORMING"
-                elif active_stop > stop: alert = f"🛡️ TRAILING STOP: ${active_stop:.2f}"
+                elif active_stop is not None and stop is not None and active_stop > stop: alert = f"🛡️ TRAILING STOP: ${active_stop:.2f}"
                     
                 # Get latest technical score and recommendation for AI verdict
                 cursor.execute("""
@@ -375,7 +385,7 @@ def get_portfolio():
                     ORDER BY created_at DESC LIMIT 1
                 """, (symbol,))
                 latest_rec = cursor.fetchone()
-                tech_score = latest_rec[0] if latest_rec else 0
+                tech_score = (latest_rec[0] if (latest_rec and latest_rec[0] is not None) else 0)
                 
                 # AI Verdict Logic
                 if tech_score >= 6: ai_verdict = "🔥 BUY MORE"
@@ -384,8 +394,13 @@ def get_portfolio():
                 else: ai_verdict = "⚠️ TRIM"
                 
                 # Proximity analysis
-                dist_to_stop = ((live_price - active_stop) / live_price) * 100
-                dist_to_target = ((target - live_price) / live_price) * 100
+                dist_to_stop = 0
+                if active_stop is not None:
+                    dist_to_stop = ((live_price - active_stop) / live_price) * 100
+                
+                dist_to_target = 0
+                if target is not None:
+                    dist_to_target = ((target - live_price) / live_price) * 100
                 
                 portfolio_data.append({
                     "symbol": symbol,

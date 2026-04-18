@@ -512,8 +512,29 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div style="font-size: 12px; color: var(--primary);">Conviction: ${rec.conviction}%</div>
                     <div style="font-size: 12px; font-family: monospace; color: var(--text-muted);">${rec.fundamentals_score}/${rec.technical_score}</div>
                 </div>
+                <div style="margin-top: 12px; display: flex; gap: 8px;">
+                    <button class="btn btn-primary add-to-watchlist-btn" data-symbol="${rec.symbol}" style="flex: 1; padding: 6px; font-size: 11px;">
+                        + Watchlist
+                    </button>
+                    <button class="btn btn-outline analyze-again-btn" data-symbol="${rec.symbol}" style="flex: 1; padding: 6px; font-size: 11px;">
+                        Re-Analyze
+                    </button>
+                </div>
             `;
             discoveryGrid.appendChild(card);
+        });
+
+        // Add event listeners for buttons
+        document.querySelectorAll('.add-to-watchlist-btn').forEach(btn => {
+            btn.onclick = async (e) => {
+                e.stopPropagation();
+                const sym = btn.dataset.symbol;
+                btn.disabled = true;
+                btn.textContent = 'Adding...';
+                await fetch(`${API_URL}/api/watchlist?symbol=${sym}`, { method: 'POST' });
+                btn.textContent = 'Added! ✓';
+                fetchWatchlist();
+            };
         });
     }
 

@@ -1,0 +1,529 @@
+/Users/nithish-prabhu/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+/Users/nithish-prabhu/Downloads/trading/main.py:685: DeprecationWarning: 
+        on_event is deprecated, use lifespan event handlers instead.
+
+        Read more about it in the
+        [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+        
+  @app.on_event("startup")
+INFO:     Will watch for changes in these directories: ['/Users/nithish-prabhu/Downloads/trading']
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [88173] using StatReload
+/Users/nithish-prabhu/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+INFO:     Started server process [88202]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+[2026-04-19 02:22:24.998677] Processing Weekly Sunday Status...
+✅ Telegram alert sent successfully!
+INFO:     127.0.0.1:63910 - "GET /api/portfolio HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63922 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63922 - "GET /style.css?v=2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "GET /app.js?v=4 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "GET /api/recommendations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63922 - "GET /api/accuracy HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63922 - "GET /api/cost-analysis HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63922 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63922 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63922 - "GET /api/backtests HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "GET /api/backtest/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "GET /api/backtests HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "GET /api/portfolio HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "POST /api/discover/run HTTP/1.1" 200 OK
+Initializing Deep Market Scan (Mid & Small Caps)...
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+Universe identified: 400 Mid-Caps, 603 Small-Caps.
+Filtering 1003 stocks for activity leaders...
+  Downloading activity for batch 1 (100 tickers)...
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+  Downloading activity for batch 2 (100 tickers)...
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+  Downloading activity for batch 3 (100 tickers)...
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+  Downloading activity for batch 4 (100 tickers)...
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+  Downloading activity for batch 5 (100 tickers)...
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+  Downloading activity for batch 6 (100 tickers)...
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+  Downloading activity for batch 7 (100 tickers)...
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+  Downloading activity for batch 8 (100 tickers)...
+  Downloading activity for batch 9 (100 tickers)...
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+  Downloading activity for batch 10 (100 tickers)...
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+  Downloading activity for batch 11 (3 tickers)...
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+Active Universe focused to 200 leaders.
+Running Momentum Hunter (60d trend)...
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+Top 5 candidates identified: ['CVBF', 'SNDR', 'FFBC', 'MXL', 'MWA']
+  AI Validating: CVBF...
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65317 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65317 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+  Sending Telegram Alert for CVBF...
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65317 - "GET /api/discover HTTP/1.1" 200 OK
+  AI Validating: SNDR...
+INFO:     127.0.0.1:65317 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65317 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65317 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+  Sending Telegram Alert for SNDR...
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65317 - "GET /api/discover HTTP/1.1" 200 OK
+  AI Validating: FFBC...
+INFO:     127.0.0.1:65317 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65317 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65317 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65317 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65317 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+  Sending Telegram Alert for FFBC...
+  AI Validating: MXL...
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65439 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65439 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "GET /api/backtests HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65439 - "GET /api/backtest/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65439 - "GET /api/backtests HTTP/1.1" 200 OK
+  Sending Telegram Alert for MXL...
+INFO:     127.0.0.1:65439 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+  AI Validating: MWA...
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65439 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65439 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65439 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "GET / HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:63924 - "GET /app.js?v=4 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:63924 - "GET /api/recommendations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65439 - "GET /api/accuracy HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+  Sending Telegram Alert for MWA...
+INFO:     127.0.0.1:63924 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49341 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49341 - "GET /style.css?v=2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49344 - "GET /app.js?v=4 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49352 - "GET /api/accuracy HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49350 - "GET /api/recommendations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49350 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49444 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49444 - "GET /api/discover HTTP/1.1" 200 OK
+WARNING:  StatReload detected changes in 'scanner.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [88202]
+/Users/nithish-prabhu/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+INFO:     Started server process [90624]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+[2026-04-19 02:27:37.525380] Processing Weekly Sunday Status...
+✅ Telegram alert sent successfully!
+INFO:     127.0.0.1:49464 - "POST /api/discover/run HTTP/1.1" 200 OK
+Initializing Deep Market Scan (Mid & Small Caps)...
+Universe identified: 400 Mid-Caps, 603 Small-Caps.
+Filtering 1003 stocks for activity leaders...
+  Downloading activity for batch 1 (100 tickers)...
+  Downloading activity for batch 2 (100 tickers)...
+  Downloading activity for batch 3 (100 tickers)...
+  Downloading activity for batch 4 (100 tickers)...
+  Downloading activity for batch 5 (100 tickers)...
+  Downloading activity for batch 6 (100 tickers)...
+  Downloading activity for batch 7 (100 tickers)...
+  Downloading activity for batch 8 (100 tickers)...
+  Downloading activity for batch 9 (100 tickers)...
+  Downloading activity for batch 10 (100 tickers)...
+  Downloading activity for batch 11 (3 tickers)...
+Active Universe focused to 200 leaders.
+Running Momentum Hunter (60d trend)...
+Top 10 candidates identified: ['CVBF', 'SNDR', 'FFBC', 'MXL', 'MWA', 'PRIM', 'ORA', 'ALV', 'WMS', 'HIMS']
+  AI Validating: CVBF...
+  Sending Telegram Alert for CVBF...
+  AI Validating: SNDR...
+INFO:     127.0.0.1:50857 - "GET /api/portfolio HTTP/1.1" 200 OK
+  Sending Telegram Alert for SNDR...
+  AI Validating: FFBC...
+  Sending Telegram Alert for FFBC...
+  AI Validating: MXL...
+  Sending Telegram Alert for MXL...
+  AI Validating: MWA...
+INFO:     127.0.0.1:50992 - "GET / HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:50992 - "GET /app.js?v=4 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:50992 - "GET /api/recommendations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50994 - "GET /api/accuracy HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50994 - "GET /api/cost-analysis HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50994 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50994 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50994 - "GET /api/backtests HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51000 - "GET /api/backtest/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51000 - "GET /api/backtests HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51000 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51000 - "GET /api/discover HTTP/1.1" 200 OK
+  Sending Telegram Alert for MWA...
+INFO:     127.0.0.1:51000 - "GET /api/discover HTTP/1.1" 200 OK
+  AI Validating: PRIM...
+INFO:     127.0.0.1:51000 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51000 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51000 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51000 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51000 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51000 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51000 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51000 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51000 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51000 - "GET /api/discover HTTP/1.1" 200 OK
+  Sending Telegram Alert for PRIM...
+INFO:     127.0.0.1:51000 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51000 - "GET /api/discover HTTP/1.1" 200 OK
+  AI Validating: ORA...
+INFO:     127.0.0.1:51000 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51000 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51000 - "GET /api/backtests HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51021 - "GET /api/backtest/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51021 - "GET /api/backtests HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51021 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51021 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51021 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51021 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51021 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51021 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51021 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51021 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51021 - "GET /api/discover HTTP/1.1" 200 OK
+  Sending Telegram Alert for ORA...
+INFO:     127.0.0.1:51021 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51021 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51021 - "GET /api/discover HTTP/1.1" 200 OK
+  AI Validating: ALV...
+INFO:     127.0.0.1:51021 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51021 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51092 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51092 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51092 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51021 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51021 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51021 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51092 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51092 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51021 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51092 - "GET /api/discover HTTP/1.1" 200 OK
+  Sending Telegram Alert for ALV...
+  AI Validating: WMS...
+INFO:     127.0.0.1:51092 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51021 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51092 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51092 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51021 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51092 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51092 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51021 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51092 - "GET /api/discover HTTP/1.1" 200 OK
+  Sending Telegram Alert for WMS...
+INFO:     127.0.0.1:51092 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51021 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51092 - "GET /api/discover HTTP/1.1" 200 OK
+  AI Validating: HIMS...
+INFO:     127.0.0.1:51092 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51021 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51092 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51092 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51021 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51092 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51092 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51021 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51092 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51092 - "GET / HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:51092 - "GET /app.js?v=4 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:51092 - "GET /api/recommendations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51021 - "GET /api/accuracy HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51021 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51021 - "GET /api/discover HTTP/1.1" 200 OK
+  Sending Telegram Alert for HIMS...
+INFO:     127.0.0.1:51021 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51021 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51232 - "GET /api/cost-analysis HTTP/1.1" 200 OK
+WARNING:  StatReload detected changes in 'main.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [90624]
+/Users/nithish-prabhu/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+INFO:     Started server process [93533]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'recommendation_engine.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [93533]
+[2026-04-19 02:33:08.906619] Processing Weekly Sunday Status...
+✅ Telegram alert sent successfully!
+/Users/nithish-prabhu/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+INFO:     Started server process [93733]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'recommendation_engine.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [93733]
+[2026-04-19 02:33:31.716887] Processing Weekly Sunday Status...
+✅ Telegram alert sent successfully!
+/Users/nithish-prabhu/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+INFO:     Started server process [93940]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+[2026-04-19 02:33:58.674248] Processing Weekly Sunday Status...
+✅ Telegram alert sent successfully!
+INFO:     127.0.0.1:51688 - "GET / HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:51688 - "GET /app.js?v=4 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51688 - "GET /api/recommendations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51690 - "GET /api/accuracy HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51769 - "GET /api/portfolio HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51769 - "GET /api/backtests HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51775 - "GET /api/backtest/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51775 - "GET /api/backtests HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51775 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51779 - "POST /api/watchlist?symbol=MWA HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51779 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51779 - "POST /api/watchlist?symbol=PRIM HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51779 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51779 - "POST /api/watchlist?symbol=ALV HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51779 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51779 - "POST /api/watchlist?symbol=HIMS HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51779 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51802 - "POST /api/watchlist?symbol=CVBF HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51802 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51802 - "POST /api/watchlist?symbol=SNDR HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51802 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51802 - "POST /api/watchlist?symbol=FFBC HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51802 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51802 - "POST /api/watchlist?symbol=MXL HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51802 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51802 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51802 - "GET / HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:51802 - "GET /app.js?v=4 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:51802 - "GET /api/recommendations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51823 - "GET /api/accuracy HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51823 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51823 - "GET /api/portfolio HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51828 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51828 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51828 - "POST /api/watchlist?symbol=MWA HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51828 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51828 - "POST /api/watchlist?symbol=ALV HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51828 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51828 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51828 - "GET / HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:51828 - "GET /app.js?v=4 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:51828 - "GET /api/recommendations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51837 - "GET /api/accuracy HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51837 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51837 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51921 - "POST /api/watchlist?symbol=MWA HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51921 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51926 - "POST /api/watchlist?symbol=ALV HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51926 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51926 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51937 - "GET /api/portfolio HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51947 - "GET /api/cost-analysis HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51949 - "GET /api/watchlist HTTP/1.1" 200 OK
+WARNING:  StatReload detected changes in 'recommendation_engine.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [93940]
+/Users/nithish-prabhu/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+INFO:     Started server process [95503]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+[2026-04-19 02:37:17.278285] Processing Weekly Sunday Status...
+✅ Telegram alert sent successfully!
+INFO:     127.0.0.1:52249 - "GET / HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:52249 - "GET /app.js?v=4 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:52249 - "GET /api/recommendations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52251 - "GET /api/accuracy HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52251 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52251 - "GET /api/cost-analysis HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52251 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52251 - "POST /api/watchlist?symbol=ALV HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52251 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52251 - "POST /api/watchlist?symbol=PRIM HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52251 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52251 - "POST /api/watchlist?symbol=WMS HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52251 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52251 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52379 - "GET /api/recommendations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52381 - "GET /api/accuracy HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52381 - "GET /api/portfolio HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52381 - "GET /api/backtests HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52390 - "GET /api/backtest/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52390 - "GET /api/backtests HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52390 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52390 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52491 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52491 - "GET /style.css?v=2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52493 - "GET /app.js?v=4 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52493 - "GET /api/recommendations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52491 - "GET /api/accuracy HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52491 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52498 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52498 - "GET /api/backtests HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52502 - "GET /api/backtest/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52502 - "GET /api/backtests HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/cost-analysis HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "POST /api/discover/run HTTP/1.1" 200 OK
+Initializing Deep Market Scan (Mid & Small Caps)...
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+Universe identified: 400 Mid-Caps, 603 Small-Caps.
+Filtering 1003 stocks for activity leaders...
+  Downloading activity for batch 1 (100 tickers)...
+INFO:     127.0.0.1:52681 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/portfolio HTTP/1.1" 200 OK
+  Downloading activity for batch 2 (100 tickers)...
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+  Downloading activity for batch 3 (100 tickers)...
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+  Downloading activity for batch 4 (100 tickers)...
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+  Downloading activity for batch 5 (100 tickers)...
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+  Downloading activity for batch 6 (100 tickers)...
+  Downloading activity for batch 7 (100 tickers)...
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+  Downloading activity for batch 8 (100 tickers)...
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+  Downloading activity for batch 9 (100 tickers)...
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+  Downloading activity for batch 10 (100 tickers)...
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+  Downloading activity for batch 11 (3 tickers)...
+Active Universe focused to 200 leaders.
+Running Momentum Hunter (60d trend)...
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+Top 10 candidates identified: ['CVBF', 'SNDR', 'FFBC', 'MXL', 'MWA', 'PRIM', 'ORA', 'ALV', 'WMS', 'HIMS']
+  AI Validating: CVBF...
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+  Sending Telegram Alert for CVBF...
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+  AI Validating: SNDR...
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+  Sending Telegram Alert for SNDR...
+  AI Validating: FFBC...
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+  Sending Telegram Alert for FFBC...
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+  AI Validating: MXL...
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+  Sending Telegram Alert for MXL...
+  AI Validating: MWA...
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+  Sending Telegram Alert for MWA...
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+  AI Validating: PRIM...
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+  Sending Telegram Alert for PRIM...
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+  AI Validating: ORA...
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+  Sending Telegram Alert for ORA...
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+  AI Validating: ALV...
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+  Sending Telegram Alert for ALV...
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+  AI Validating: WMS...
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+  Sending Telegram Alert for WMS...
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+  AI Validating: HIMS...
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+  Sending Telegram Alert for HIMS...
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52619 - "GET /api/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54318 - "GET /api/watchlist HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54318 - "GET /api/portfolio HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54318 - "GET /api/cost-analysis HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54396 - "GET /api/watchlist HTTP/1.1" 200 OK

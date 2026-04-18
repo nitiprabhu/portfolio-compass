@@ -78,6 +78,47 @@ class RecommendationDB:
                 )
             """)
             
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS api_usage (
+                    id INTEGER PRIMARY KEY,
+                    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    model TEXT,
+                    input_tokens INTEGER,
+                    output_tokens INTEGER,
+                    cost REAL
+                )
+            """)
+
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS watchlist (
+                    id INTEGER PRIMARY KEY,
+                    symbol TEXT UNIQUE,
+                    added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    expires_at TIMESTAMP
+                )
+            """)
+
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS paper_trades (
+                    id INTEGER PRIMARY KEY,
+                    symbol TEXT,
+                    entry_price REAL,
+                    current_price REAL,
+                    status TEXT DEFAULT 'OPEN',
+                    pnl_pct REAL DEFAULT 0.0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            
+            conn.commit()
+    
+    def log_api_usage(self, model: str, input_tokens: int, output_tokens: int, cost: float):
+        """Log API usage for cost tracking"""
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute("""
+                INSERT INTO api_usage (model, input_tokens, output_tokens, cost)
+                VALUES (?, ?, ?, ?)
+            """, (model, input_tokens, output_tokens, cost))
             conn.commit()
     
     def save_recommendation(self, rec: Dict) -> int:
@@ -283,6 +324,13 @@ class RecommendationEngine:
                 max_tokens=1500,
                 messages=[{"role": "user", "content": prompt}]
             )
+
+            # Log Usage for Cost Analysis
+            input_tokens = response.usage.input_tokens
+            output_tokens = response.usage.output_tokens
+            # Claude Haiku costs: $0.25 / M input, $1.25 / M output
+            cost = (input_tokens / 1_000_000 * 0.25) + (output_tokens / 1_000_000 * 1.25)
+            self.db.log_api_usage(response.model, input_tokens, output_tokens, cost)
 
             recommendation_text = response.content[0].text
 
