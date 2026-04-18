@@ -34,6 +34,12 @@
                 <a href="#" class="nav-item" id="nav-discovery">
                     <i data-lucide="search"></i> Market Discovery
                 </a>
+                <a href="#" class="nav-item" id="nav-watchlist">
+                    <i data-lucide="eye"></i> Watchlist
+                </a>
+                <a href="#" class="nav-item" id="nav-costs">
+                    <i data-lucide="banknote"></i> Cost Analysis
+                </a>
                 <a href="#" class="nav-item">
                     <i data-lucide="settings"></i> Settings
                 </a>
@@ -193,9 +199,10 @@
                                     <th>ENTRY</th>
                                     <th>LIVE PRICE</th>
                                     <th>RETURN</th>
-                                    <th>TARGET</th>
-                                    <th>STOP LOSS</th>
+                                    <th>AI VERDICT</th>
+                                    <th>DISTANCE</th>
                                     <th>STATUS</th>
+                                    <th>TREND</th>
                                 </tr>
                             </thead>
                             <tbody id="portfolio-tbody">
@@ -290,6 +297,92 @@
                     </div>
                 </div>
             </div> <!-- End Discovery View -->
+
+            <!-- Watchlist View (Hidden by default) -->
+            <div id="view-watchlist" class="dashboard-grid hidden">
+                <div class="section-container glass-panel">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px;">
+                        <div>
+                            <h2 style="font-size: 18px; font-weight: 600; color: var(--text-main); margin-bottom: 4px;">Model Watchlist (90 Days)</h2>
+                            <p style="color: var(--text-muted); font-size: 13px;">Simulated $100 positions based on daily AI recommendations</p>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <input type="text" id="watchlist-add-input" class="text-input" placeholder="Symbol (e.g. AMD)" style="width: 150px; padding: 6px 12px; font-size: 13px;">
+                            <button class="btn btn-primary" id="add-watchlist-btn" style="padding: 8px 16px; font-size: 13px;">
+                                <i data-lucide="plus"></i> Add
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Symbol</th>
+                                    <th>Added At</th>
+                                    <th>Expires At</th>
+                                    <th>Paper Position</th>
+                                    <th>Current Value</th>
+                                    <th>P/L</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="watchlist-tbody">
+                                <!-- JS Populated -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div> <!-- End Watchlist View -->
+
+            <!-- Cost Analysis View (Hidden by default) -->
+            <div id="view-costs" class="dashboard-grid hidden">
+                <div class="section-container glass-panel">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px;">
+                        <div>
+                            <h2 style="font-size: 18px; font-weight: 600; color: var(--text-main); margin-bottom: 4px;">API Cost Analysis</h2>
+                            <p style="color: var(--text-muted); font-size: 13px;">Real-time tracking of AI API consumption and monthly projections</p>
+                        </div>
+                    </div>
+
+                    <div class="portfolio-stats" style="display: flex; gap: 30px; margin-bottom: 30px; padding: 20px; background: rgba(255,255,255,0.03); border-radius: 12px;">
+                        <div class="p-stat">
+                            <span class="stat-label">Total Spent</span>
+                            <div class="stat-val" id="cost-total-spent">$0.00</div>
+                        </div>
+                        <div class="p-stat">
+                            <span class="stat-label">Spent Today</span>
+                            <div class="stat-val" id="cost-today">$0.00</div>
+                        </div>
+                        <div class="p-stat">
+                            <span class="stat-label">Monthly Projection</span>
+                            <div class="stat-val" id="cost-projection" style="color: var(--primary);">$0.00</div>
+                        </div>
+                        <div class="p-stat">
+                            <span class="stat-label">Total API Calls</span>
+                            <div class="stat-val" id="cost-total-calls">0</div>
+                        </div>
+                    </div>
+
+                    <div class="table-container">
+                        <h3>Recent API Usage</h3>
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Time</th>
+                                    <th>Model</th>
+                                    <th>Input Tokens</th>
+                                    <th>Output Tokens</th>
+                                    <th>Cost</th>
+                                </tr>
+                            </thead>
+                            <tbody id="costs-tbody">
+                                <!-- JS Populated -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div> <!-- End Cost Analysis View -->
 
         </main>
     </div>

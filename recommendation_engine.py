@@ -78,6 +78,41 @@ class RecommendationDB:
                 )
             """)
             
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS watchlist (
+                    id INTEGER PRIMARY KEY,
+                    symbol TEXT NOT NULL UNIQUE,
+                    added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    expires_at TIMESTAMP
+                )
+            """)
+
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS paper_trades (
+                    id INTEGER PRIMARY KEY,
+                    symbol TEXT NOT NULL,
+                    quantity REAL,
+                    entry_price REAL,
+                    current_price REAL,
+                    total_investment REAL,
+                    current_value REAL,
+                    status TEXT DEFAULT 'OPEN', -- OPEN, CLOSED
+                    opened_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    closed_at TIMESTAMP
+                )
+            """)
+
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS api_usage (
+                    id INTEGER PRIMARY KEY,
+                    model TEXT NOT NULL,
+                    input_tokens INTEGER,
+                    output_tokens INTEGER,
+                    cost REAL,
+                    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            
             conn.commit()
     
     def save_recommendation(self, rec: Dict) -> int:
@@ -278,6 +313,7 @@ class RecommendationEngine:
             # 4. Ask Claude for recommendation
             prompt = self._build_prompt(symbol, fundamentals, technicals, fund_score, tech_score,
                                         regime, news, history, port_stats)
+            
             response = self.client.messages.create(
                 model="claude-haiku-4-5-20251001",
                 max_tokens=1500,
@@ -285,6 +321,22 @@ class RecommendationEngine:
             )
 
             recommendation_text = response.content[0].text
+            
+            # --- Cost Analysis Logging ---
+            try:
+                in_tokens = getattr(response.usage, 'input_tokens', 0)
+                out_tokens = getattr(response.usage, 'output_tokens', 0)
+                # Haiku Pricing: $0.25/MT input, $1.25/MT output
+                cost = (in_tokens * (0.25/1000000)) + (out_tokens * (1.25/1000000))
+                with sqlite3.connect(self.db.db_path) as conn:
+                    conn.execute(
+                        "INSERT INTO api_usage (model, input_tokens, output_tokens, cost) VALUES (?, ?, ?, ?)",
+                        (response.model, in_tokens, out_tokens, cost)
+                    )
+                    conn.commit()
+            except Exception as cost_err:
+                print(f"Usage logging error: {cost_err}")
+            # -----------------------------
 
             # 5. Parse Claude's response
             rec = self._parse_recommendation(
@@ -518,6 +570,19 @@ class RecommendationEngine:
             atr14 = float(tr.rolling(14).mean().iloc[-1])
             atr_stop = round(current - 2.0 * atr14, 2)  # prop-desk standard
 
+            # ── Fibonacci Retracement Levels ─────────────────────────────────
+            fib_range = high52 - low52
+            fib_levels = {
+                "fib_382": high52 - (fib_range * 0.382),
+                "fib_500": high52 - (fib_range * 0.500),
+                "fib_618": high52 - (fib_range * 0.618)
+            }
+            # Check if price is near a major fib level (within 1%)
+            near_fib = None
+            for name, val in fib_levels.items():
+                if abs(current - val) / val < 0.01:
+                    near_fib = name
+
             # ── Volatility: Bollinger Bands + Squeeze ────────────────────────
             bb_mid   = close.rolling(20).mean()
             bb_std   = close.rolling(20).std()
@@ -599,6 +664,7 @@ class RecommendationEngine:
                 "volatility": volatility, "change_1y": change_1y,
                 "atr14": round(atr14, 2), "atr_stop": atr_stop,
                 "bb_width": round(bb_width, 4), "bb_squeeze": bb_squeeze,
+                "fib_levels": fib_levels, "near_fib": near_fib,
                 # Volume / Conviction
                 "volume_ratio": vol_ratio,
                 "obv_rising": obv_rising, "obv_divergence": obv_divergence,
@@ -702,9 +768,9 @@ class RecommendationEngine:
         # ── Layer 2: Momentum ───────────────────────────────────────────────
         l2 = 0
         rsi = tech.get("rsi", 50)
-        if 40 < rsi < 70:   l2 += 1   # Wilder's 70/30 corrected
-        elif rsi > 70:       l2 -= 1
-        elif rsi < 30:       l2 += 1   # Oversold
+        if 40 < rsi < 70:    l2 += 1   # Trend active but not exhausted
+        elif rsi >= 70:      l2 -= 1   # Overbought
+        elif rsi <= 30:      l2 += 2   # Strong Oversold (Reversal potential)
         if tech.get("rsi_divergence"): l2 -= 2  # Bearish divergence = distribution
         # MACD histogram slope
         if tech.get("macd_bullish"):   l2 += 1
@@ -716,6 +782,7 @@ class RecommendationEngine:
         # ── Layer 3: Volatility / Safety ────────────────────────────────────
         l3 = 0
         if tech.get("bb_squeeze"): l3 += 1  # Imminent breakout setup
+        if tech.get("near_fib"):   l3 += 1  # Price rejection/support at Fib level
         vol = tech.get("volatility", 30)
         if vol < 25: l3 += 1    # Low vol — manageable risk
         elif vol > 60: l3 -= 1  # Very high vol — dangerous

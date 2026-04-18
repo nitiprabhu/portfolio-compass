@@ -206,6 +206,7 @@ def get_portfolio():
                 FROM recommendations r
                 LEFT JOIN outcomes o ON r.id = o.recommendation_id
                 WHERE r.recommendation = 'BUY' AND (o.status IS NULL OR o.status = 'OPEN')
+                AND r.symbol NOT IN (SELECT symbol FROM watchlist)
                 GROUP BY r.symbol
                 ORDER BY r.created_at DESC
             """)
@@ -263,6 +264,26 @@ def get_portfolio():
                 elif pnl_pct < -5: alert = "⚠️ UNDERPERFORMING"
                 elif active_stop > stop: alert = f"🛡️ TRAILING STOP: ${active_stop:.2f}"
                     
+                # Get latest technical score and recommendation for AI verdict
+                cursor.execute("""
+                    SELECT technical_score, recommendation 
+                    FROM recommendations 
+                    WHERE symbol = ? 
+                    ORDER BY created_at DESC LIMIT 1
+                """, (symbol,))
+                latest_rec = cursor.fetchone()
+                tech_score = latest_rec[0] if latest_rec else 0
+                
+                # AI Verdict Logic
+                if tech_score >= 6: ai_verdict = "🔥 BUY MORE"
+                elif tech_score >= 2: ai_verdict = "✅ HOLD"
+                elif tech_score >= -2: ai_verdict = "⚖️ NEUTRAL"
+                else: ai_verdict = "⚠️ TRIM"
+                
+                # Proximity analysis
+                dist_to_stop = ((live_price - active_stop) / live_price) * 100
+                dist_to_target = ((target - live_price) / live_price) * 100
+                
                 portfolio_data.append({
                     "symbol": symbol,
                     "entry": entry,
@@ -270,7 +291,11 @@ def get_portfolio():
                     "pnl_pct": pnl_pct,
                     "target": target,
                     "stop": active_stop,
-                    "alert": alert
+                    "alert": alert,
+                    "verdict": ai_verdict,
+                    "tech_score": tech_score,
+                    "dist_to_stop": dist_to_stop,
+                    "dist_to_target": dist_to_target
                 })
             conn.commit()
             
@@ -281,6 +306,107 @@ def get_portfolio():
         }
             
         return {"status": "success", "data": portfolio_data, "summary": summary}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+@app.get("/api/watchlist")
+def get_watchlist():
+    try:
+        with sqlite3.connect(engine.db.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM watchlist ORDER BY added_at DESC")
+            items = [dict(row) for row in cursor.fetchall()]
+            
+            # Get paper trades for these symbols
+            cursor.execute("SELECT * FROM paper_trades WHERE status = 'OPEN'")
+            trades = {row['symbol']: dict(row) for row in cursor.fetchall()}
+            
+            for item in items:
+                item['trade'] = trades.get(item['symbol'])
+                
+            return {"status": "success", "data": items}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+@app.post("/api/watchlist")
+def add_to_watchlist(symbol: str):
+    try:
+        symbol = symbol.upper().strip()
+        with sqlite3.connect(engine.db.db_path) as conn:
+            cursor = conn.cursor()
+            # 3 month expiry
+            expires_at = (datetime.now() + timedelta(days=90)).strftime('%Y-%m-%d %H:%M:%S')
+            cursor.execute(
+                "INSERT OR IGNORE INTO watchlist (symbol, expires_at) VALUES (?, ?)",
+                (symbol, expires_at)
+            )
+            conn.commit()
+        return {"status": "success", "message": f"{symbol} added to watchlist"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+@app.delete("/api/watchlist/{symbol}")
+def remove_from_watchlist(symbol: str):
+    try:
+        symbol = symbol.upper().strip()
+        with sqlite3.connect(engine.db.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM watchlist WHERE symbol = ?", (symbol,))
+            conn.commit()
+        return {"status": "success", "message": f"{symbol} removed from watchlist"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+@app.get("/api/cost-analysis")
+def get_cost_analysis():
+    try:
+        with sqlite3.connect(engine.db.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            
+            # Total stats
+            cursor.execute("SELECT COUNT(*), SUM(input_tokens), SUM(output_tokens), SUM(cost) FROM api_usage")
+            stats = cursor.fetchone()
+            total_calls = stats[0] or 0
+            total_cost = stats[3] or 0
+            
+            # Today's stats
+            cursor.execute("SELECT SUM(cost) FROM api_usage WHERE timestamp > date('now')")
+            today_cost = cursor.fetchone()[0] or 0
+            
+            # Monthly projection
+            cursor.execute("SELECT (julianday('now') - julianday(MIN(timestamp))) + 1 FROM api_usage")
+            days_tracked_row = cursor.fetchone()
+            days_tracked = days_tracked_row[0] if days_tracked_row and days_tracked_row[0] else 1
+            avg_daily_cost = total_cost / days_tracked
+            monthly_projection = avg_daily_cost * 30
+            
+            # Recent usage
+            cursor.execute("SELECT * FROM api_usage ORDER BY timestamp DESC LIMIT 10")
+            recent_items = [dict(row) for row in cursor.fetchall()]
+            
+            return {
+                "status": "success",
+                "summary": {
+                    "total_calls": total_calls,
+                    "total_cost": round(total_cost, 4),
+                    "today_cost": round(today_cost, 4),
+                    "monthly_projection": round(monthly_projection, 2)
+                },
+                "history": recent_items
+            }
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+@app.get("/api/paper-trades")
+def get_paper_trades():
+    try:
+        with sqlite3.connect(engine.db.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM paper_trades ORDER BY opened_at DESC")
+            return {"status": "success", "data": [dict(row) for row in cursor.fetchall()]}
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
@@ -325,8 +451,8 @@ def send_weekly_status():
         msg = (
             f"📊 <b>Weekly Strategic Review</b> 📊\n\n"
             f"✨ <b>Activity:</b> {total_trades or 0} active positions tracked\n"
-            f"📈 <b>Avg Return:</b> {avg_return:.2f}% (this week)\n"
-            f"🚀 <b>Best Performer:</b> {top[0] if top else 'N/A'} (+{top[1]:.1f}%)\n"
+            f"📈 <b>Avg Return:</b> {avg_return or 0:.2f}% (this week)\n"
+            f"🚀 <b>Best Performer:</b> {top[0] if top else 'N/A'} (+{top[1] if top else 0:.1f}%)\n"
             f"💰 <b>Est. Portfolio:</b> ${portfolio_value:,.2f}\n\n"
             f"<i>Market is closed. Have a great weekend!</i>"
         )
@@ -338,11 +464,9 @@ def send_weekly_status():
 def check_sector_concentration() -> Optional[str]:
     """Returns a warning message if any single sector exceeds 40% of active BUY positions."""
     sector_map = {
-        "AAPL": "Technology", "NVDA": "Technology", "MSFT": "Technology",
-        "AMD": "Technology", "SOXX": "Technology", "SOXL": "Technology",
-        "GOOGL": "Technology", "TSLA": "Technology",
-        "ASTS": "Industrials", "RKLB": "Industrials",
-        "IOT": "Technology", "PLTR": "Technology"
+        "AVGO": "Technology", "GOOGL": "Technology", "SMH": "Technology", "INTC": "Technology",
+        "ARKW": "Technology", "STEP": "Financial Services", "VNT": "Industrials", "CPNG": "Consumer Cyclical",
+        "CPER": "Basic Materials", "URA": "Energy", "CNXT": "International/ETF"
     }
     try:
         with sqlite3.connect(engine.db.db_path) as conn:
@@ -422,8 +546,9 @@ def monitor_portfolio_alerts():
 
 
 async def background_daily_analysis():
-    """Runs automatically to keep everything updated and handle Sunday reports"""
+    """Runs automatically once per day to update analysis and handle reports"""
     last_sunday_report_date = None
+    last_daily_analysis_date = None
     
     while True:
         now = datetime.now()
@@ -435,45 +560,100 @@ async def background_daily_analysis():
             send_weekly_status()
             last_sunday_report_date = now.date()
 
-        if current_day < 5:  # Monday–Friday only
-            symbols_to_track = ["AAPL", "NVDA", "MSFT", "SOXX", "SOXL", "ASTS", "RKLB", "IOT", "PLTR", "AMD", "GOOGL", "TSLA"]
+        # ── Daily Analysis (Monday–Friday) ─────
+        if current_day < 5 and last_daily_analysis_date != now.date():
+            symbols_to_track = ["AVGO", "GOOGL", "CPER", "URA", "VNT", "CPNG", "SMH", "CNXT", "ARKW", "STEP", "INTC"]
             try:
                 print(f"[{now}] Executing Automated Daily Analysis...")
+                # Full technical analysis for your actual holdings
                 engine.batch_analyze(symbols_to_track)
                 
-                # (BUY Alerts code remains same...)
-                time_threshold = (now - timedelta(minutes=15)).strftime('%Y-%m-%d %H:%M:%S')
-                with sqlite3.connect(engine.db.db_path) as conn:
-                    cursor = conn.cursor()
-                    cursor.execute("""
-                        SELECT symbol, recommendation, conviction, entry_price, target_price, stop_loss 
-                        FROM recommendations 
-                        WHERE created_at > ? AND recommendation = 'BUY'
-                    """, (time_threshold,))
-                    fresh_buys = cursor.fetchall()
+                # Market Deep Scan (Top 10 Momentum Leaders)
+                from scanner import MarketScanner
+                scanner = MarketScanner()
+                print(f"[{now}] Beginning Daily Market Deep Scan...")
+                scanner.run_scan()
                 
-                if fresh_buys:
-                    alert_text = "🚨 <b>Portfolio Compass — New BUY Signals</b> 🚨\n\n"
-                    for b in fresh_buys:
-                        sym, action, conv, entry, target, stop = b
-                        alert_text += f"📈 <b>{sym}</b>: {action} ({conv}% Conviction)\n"
-                        alert_text += f"💵 Entry: ${entry:.2f} | Target: ${target:.2f} | Stop: ${stop:.2f}\n\n"
-                    send_telegram_alert(alert_text)
-
+                # Check for any new alerts after analysis
                 monitor_portfolio_alerts()
                 
+                # ── Critical Event Detector (Premium Alerts) ─────
+                print(f"[{now}] Scanning for Critical Portfolio Events...")
+                portfolio_res = get_portfolio()
+                if portfolio_res['status'] == 'success':
+                    for item in portfolio_res['data']:
+                        alert_msgs = []
+                        # 1. Stop Loss Proximity (< 2.5%)
+                        if item['dist_to_stop'] < 2.5 and item['alert'] != "🛑 STOP TRIGGERED":
+                            alert_msgs.append(f"🚨 <b>CRITICAL:</b> {item['symbol']} is only {item['dist_to_stop']:.1f}% away from Stop Loss!")
+                        
+                        # 2. Verdict Crash (TRIM required on high-value position)
+                        if item['verdict'] == "⚠️ TRIM" and item['pnl_pct'] > 5:
+                            alert_msgs.append(f"📉 <b>WARNING:</b> AI downgraded {item['symbol']} to TRIM while you are in profit. Consider locking in gains!")
+
+                        # 3. Target Proximity (> 95% to target)
+                        if item['dist_to_target'] < 3 and item['alert'] != "🎯 HIT TARGET":
+                            alert_msgs.append(f"🎯 <b>SOON:</b> {item['symbol']} is approaching target ({item['dist_to_target']:.1f}% left)!")
+
+                        if alert_msgs:
+                            send_telegram_alert("\n".join(alert_msgs))
+                
+                # ── Watchlist Paper Trading ─────
+                print(f"[{now}] Processing Watchlist & Paper Trading...")
+                with sqlite3.connect(engine.db.db_path) as conn:
+                    cursor = conn.cursor()
+                    cursor.execute("SELECT symbol FROM watchlist")
+                    watch_symbols = [row[0] for row in cursor.fetchall()]
+                
+                for ws in watch_symbols:
+                    rec = engine.analyze_stock(ws, bypass_cache=True, save_to_db=True)
+                    if not rec: continue
+                    
+                    price = rec['entry_price']
+                    with sqlite3.connect(engine.db.db_path) as conn:
+                        cursor = conn.cursor()
+                        cursor.execute("SELECT id, quantity FROM paper_trades WHERE symbol = ? AND status = 'OPEN'", (ws,))
+                        active_trade = cursor.fetchone()
+                        
+                        if rec['recommendation'] == 'BUY':
+                            if not active_trade:
+                                # Start new paper trade with $100
+                                qty = 100.0 / price
+                                cursor.execute("""
+                                    INSERT INTO paper_trades (symbol, quantity, entry_price, current_price, total_investment, current_value, status)
+                                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                                """, (ws, qty, price, price, 100.0, 100.0, 'OPEN'))
+                                print(f"  PAPER BUY: {ws} at ${price} ($100 lot)")
+                        
+                        elif rec['recommendation'] == 'SELL' and active_trade:
+                            # Close position
+                            cursor.execute("""
+                                UPDATE paper_trades 
+                                SET status = 'CLOSED', closed_at = CURRENT_TIMESTAMP, current_price = ?
+                                WHERE id = ?
+                            """, (price, active_trade[0]))
+                            print(f"  PAPER SELL: {ws} at ${price}")
+                        
+                        # Update current price for all open watchlist positions
+                        cursor.execute("UPDATE paper_trades SET current_price = ?, current_value = quantity * ? WHERE symbol = ? AND status = 'OPEN'", (price, price, ws))
+                    
                 sector_warning = check_sector_concentration()
                 if sector_warning:
                     send_telegram_alert(sector_warning)
 
+                last_daily_analysis_date = now.date()
+                print(f"[{now}] Daily Analysis & Deep Scan complete.")
+
             except Exception as e:
                 print(f"Automated analysis failed: {e}")
                 send_telegram_alert(f"⚠️ Engine Error: {e}")
-        else:
-            if current_day != 6: # Saturday
-                print(f"[{now}] Market is closed. Resting.")
         
-        await asyncio.sleep(3600)  # Check every hour for easier logic tracking
+        elif current_day >= 5 and current_day != 6: # Saturday
+            if last_daily_analysis_date != now.date():
+                print(f"[{now}] Market is closed. Resting.")
+                last_daily_analysis_date = now.date()
+        
+        await asyncio.sleep(3600)  # Check every hour, but execute only once per day
 
 @app.on_event("startup")
 async def startup_event():

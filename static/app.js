@@ -10,6 +10,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const navPortfolio = document.getElementById('nav-portfolio');
     const navBacktest = document.getElementById('nav-backtest');
     const navDiscovery = document.getElementById('nav-discovery');
+    const navWatchlist = document.getElementById('nav-watchlist');
+    const navCosts = document.getElementById('nav-costs');
 
     function showView(viewId) {
         document.querySelectorAll('[id^="view-"]').forEach(v => v.classList.add('hidden'));
@@ -27,7 +29,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 'view-dashboard': 'Dashboard',
                 'view-portfolio': 'Live Portfolio',
                 'view-backtest': 'Proof of History',
-                'view-discovery': 'Market Discovery'
+                'view-discovery': 'Market Discovery',
+                'view-watchlist': 'Model Watchlist',
+                'view-costs': 'Cost Analysis'
             };
             if (viewNames[viewId]) headerTitle.textContent = viewNames[viewId];
         }
@@ -38,12 +42,16 @@ document.addEventListener('DOMContentLoaded', () => {
             fetchPastRuns();
             fetchBacktestResults();
         }
+        if (viewId === 'view-watchlist') fetchWatchlist();
+        if (viewId === 'view-costs') fetchCostAnalysis();
     }
 
     navDashboard?.addEventListener('click', (e) => { e.preventDefault(); showView('view-dashboard'); });
     navPortfolio?.addEventListener('click', (e) => { e.preventDefault(); showView('view-portfolio'); });
     navBacktest?.addEventListener('click', (e) => { e.preventDefault(); showView('view-backtest'); });
     navDiscovery?.addEventListener('click', (e) => { e.preventDefault(); showView('view-discovery'); });
+    navWatchlist?.addEventListener('click', (e) => { e.preventDefault(); showView('view-watchlist'); });
+    navCosts?.addEventListener('click', (e) => { e.preventDefault(); showView('view-costs'); });
 
 
     // DOM Elements
@@ -428,6 +436,19 @@ document.addEventListener('DOMContentLoaded', () => {
                         else if(item.alert.includes('STOP')) badgeClass = 'sell';
                         else if(item.alert.includes('UNDER')) badgeClass = 'sell';
                         
+                        // Verdict style
+                        let verdictClass = 'hold';
+                        if(item.verdict.includes('BUY')) verdictClass = 'buy';
+                        else if(item.verdict.includes('TRIM')) verdictClass = 'sell';
+                        
+                        // Distance Alert
+                        let distText = `<span style="color: var(--text-muted); font-size: 11px;">🎯 +${item.dist_to_target.toFixed(1)}%</span>`;
+                        if(item.dist_to_stop < 5) {
+                            distText = `<span style="color: var(--danger); font-size: 11px; font-weight: bold;">🛑 ${item.dist_to_stop.toFixed(1)}% to Stop</span>`;
+                        } else if(item.dist_to_target < 5) {
+                            distText = `<span style="color: var(--success); font-size: 11px; font-weight: bold;">🎯 ${item.dist_to_target.toFixed(1)}% to Target</span>`;
+                        }
+
                         tr.innerHTML = `
                             <td style="font-weight: bold; color: var(--text-light);"><div class="symbol-cell">${item.symbol}</div></td>
                             <td>$${item.entry.toFixed(2)}</td>
@@ -435,9 +456,10 @@ document.addEventListener('DOMContentLoaded', () => {
                             <td style="color: ${item.pnl_pct >= 0 ? 'var(--success)' : 'var(--danger)'}">
                                 ${item.pnl_pct > 0 ? '+' : ''}${item.pnl_pct.toFixed(2)}%
                             </td>
-                            <td class="target-price">$${item.target?.toFixed(2) || '--'}</td>
-                            <td class="stop-loss">$${item.stop?.toFixed(2) || '--'}</td>
+                            <td><span class="badge ${verdictClass}" style="letter-spacing: 0; padding: 4px 8px;">${item.verdict}</span></td>
+                            <td>${distText}</td>
                             <td><span class="badge ${badgeClass}">${item.alert}</span></td>
+                            <td style="font-family: monospace; color: var(--text-muted);">${item.tech_score > 0 ? '+' : ''}${item.tech_score}</td>
                         `;
                         portTbody.appendChild(tr);
                     });
@@ -502,8 +524,22 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div style="font-size: 12px; color: var(--primary);">Conviction: ${rec.conviction}%</div>
                     <div style="font-size: 12px; font-family: monospace; color: var(--text-muted);">${rec.fundamentals_score}/${rec.technical_score}</div>
                 </div>
+                <button class="btn btn-secondary w-full add-to-watch-quick" data-symbol="${rec.symbol}" style="margin-top: 12px; padding: 6px; font-size: 11px; background: rgba(255,255,255,0.05);">
+                    <i data-lucide="eye" style="width: 12px; height: 12px;"></i> Watch & Paper Trade
+                </button>
             `;
             discoveryGrid.appendChild(card);
+        });
+
+        document.querySelectorAll('.add-to-watch-quick').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const sym = btn.dataset.symbol;
+                btn.disabled = true;
+                btn.innerHTML = '<i class="spinner" style="width:10px;height:10px"></i> Adding...';
+                await fetch(`${API_URL}/api/watchlist?symbol=${sym}`, { method: 'POST' });
+                btn.innerHTML = '<i data-lucide="check"></i> Added';
+                if(window.lucide) window.lucide.createIcons();
+            });
         });
     }
 
@@ -519,6 +555,113 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (e) {
                 console.error("Discovery run error:", e);
             }
+        });
+    }
+
+    // Watchlist Logic
+    const watchlistAddInput = document.getElementById('watchlist-add-input');
+    const addWatchlistBtn = document.getElementById('add-watchlist-btn');
+    const watchlistTbody = document.getElementById('watchlist-tbody');
+
+    async function fetchWatchlist() {
+        try {
+            const res = await fetch(`${API_URL}/api/watchlist`);
+            const data = await res.json();
+            if (data.status === 'success') {
+                renderWatchlist(data.data);
+            }
+        } catch (e) { console.error(e); }
+    }
+
+    function renderWatchlist(items) {
+        watchlistTbody.innerHTML = '';
+        if (items.length === 0) {
+            watchlistTbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted)">Watchlist is empty. Add symbols to track and paper trade.</td></tr>';
+            return;
+        }
+
+        items.forEach(item => {
+            const tr = document.createElement('tr');
+            const trade = item.trade;
+            const pnl = trade ? ((trade.current_value - trade.total_investment) / trade.total_investment * 100) : 0;
+            const pnlClass = pnl >= 0 ? "text-success" : "text-danger";
+            const pnlColor = pnl >= 0 ? "var(--success)" : "var(--danger)";
+
+            tr.innerHTML = `
+                <td style="font-weight: bold; color: var(--text-light);">${item.symbol}</td>
+                <td style="font-size: 12px; color: var(--text-muted);">${new Date(item.added_at).toLocaleDateString()}</td>
+                <td style="font-size: 12px; color: var(--text-muted);">${new Date(item.expires_at).toLocaleDateString()}</td>
+                <td>${trade ? `<span class="badge buy">LONG $100</span>` : `<span class="badge hold">No Signal</span>`}</td>
+                <td>${trade ? `$${trade.current_value.toFixed(2)}` : '--'}</td>
+                <td style="color: ${pnlColor}">${trade ? `${pnl > 0 ? '+' : ''}${pnl.toFixed(2)}%` : '--'}</td>
+                <td>
+                    <button class="btn-icon delete-watchlist" data-symbol="${item.symbol}" style="color: var(--danger);">
+                        <i data-lucide="trash-2" style="width: 14px;"></i>
+                    </button>
+                </td>
+            `;
+            watchlistTbody.appendChild(tr);
+        });
+
+        document.querySelectorAll('.delete-watchlist').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const symbol = btn.dataset.symbol;
+                await fetch(`${API_URL}/api/watchlist/${symbol}`, { method: 'DELETE' });
+                fetchWatchlist();
+            });
+        });
+
+        if(window.lucide) window.lucide.createIcons();
+    }
+
+    addWatchlistBtn?.addEventListener('click', async () => {
+        const symbol = watchlistAddInput.value.trim().toUpperCase();
+        if (!symbol) return;
+        
+        await fetch(`${API_URL}/api/watchlist?symbol=${symbol}`, { method: 'POST' });
+        watchlistAddInput.value = '';
+        fetchWatchlist();
+    });
+
+    // Cost Analysis Logic
+    const costTotalSpent = document.getElementById('cost-total-spent');
+    const costToday = document.getElementById('cost-today');
+    const costProjection = document.getElementById('cost-projection');
+    const costTotalCalls = document.getElementById('cost-total-calls');
+    const costsTbody = document.getElementById('costs-tbody');
+
+    async function fetchCostAnalysis() {
+        try {
+            const res = await fetch(`${API_URL}/api/cost-analysis`);
+            const data = await res.json();
+            if (data.status === 'success') {
+                renderCostAnalysis(data);
+            }
+        } catch (e) { console.error(e); }
+    }
+
+    function renderCostAnalysis(data) {
+        costTotalSpent.textContent = `$${data.summary.total_cost.toFixed(4)}`;
+        costToday.textContent = `$${data.summary.today_cost.toFixed(4)}`;
+        costProjection.textContent = `$${data.summary.monthly_projection.toFixed(2)}`;
+        costTotalCalls.textContent = data.summary.total_calls;
+
+        costsTbody.innerHTML = '';
+        if (data.history.length === 0) {
+            costsTbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted)">No usage recorded yet. Run analysis to see costs.</td></tr>';
+            return;
+        }
+
+        data.history.forEach(item => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td style="font-size: 11px; color: var(--text-muted);">${new Date(item.timestamp).toLocaleString()}</td>
+                <td style="font-family: monospace; font-size: 11px;">${item.model}</td>
+                <td>${item.input_tokens}</td>
+                <td>${item.output_tokens}</td>
+                <td style="font-weight: bold; color: var(--text-main);">$${item.cost.toFixed(4)}</td>
+            `;
+            costsTbody.appendChild(tr);
         });
     }
 
