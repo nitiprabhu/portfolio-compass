@@ -20,145 +20,15 @@ from typing import Optional, List, Dict
 import yfinance as yf
 import pandas as pd
 import anthropic
+from database import RecommendationDB
+try:
+    import psycopg2
+    from psycopg2.extras import RealDictCursor
+    HAS_POSTGRES = True
+except ImportError:
+    HAS_POSTGRES = False
 
 # ============================================================================
-# DATABASE SETUP
-# ============================================================================
-
-class RecommendationDB:
-
-    def __init__(self, db_path: str = "recommendations.db"):
-        self.db_path = db_path
-        self.init_db()
-
-    def init_db(self):
-        with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS recommendations (
-                    id INTEGER PRIMARY KEY,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    symbol TEXT,
-                    recommendation TEXT,
-                    conviction INTEGER,
-                    entry_price REAL,
-                    stop_loss REAL,
-                    target_price REAL,
-                    fundamentals_score INTEGER,
-                    technical_score INTEGER,
-                    reasoning TEXT,
-                    reasons_json TEXT,
-                    risks_json TEXT,
-                    outlook TEXT,
-                    news_sentiment REAL,
-                    news_json TEXT,
-                    atr_stop REAL,
-                    atr14 REAL
-                )
-            """)
-            
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS outcomes (
-                    id INTEGER PRIMARY KEY,
-                    recommendation_id INTEGER,
-                    symbol TEXT,
-                    entry_price REAL,
-                    entry_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    current_price REAL,
-                    check_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    status TEXT, -- OPEN, CLOSED
-                    return_pct REAL,
-                    peak_price REAL
-                )
-            """)
-            
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS backtests (
-                    id INTEGER PRIMARY KEY,
-                    run_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    symbols TEXT,
-                    aggregate_stats JSON,
-                    results_json JSON
-                )
-            """)
-            
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS api_usage (
-                    id INTEGER PRIMARY KEY,
-                    model TEXT NOT NULL,
-                    input_tokens INTEGER,
-                    output_tokens INTEGER,
-                    cost REAL,
-                    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
-
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS watchlist (
-                    id INTEGER PRIMARY KEY,
-                    symbol TEXT NOT NULL UNIQUE,
-                    added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    expires_at TIMESTAMP
-                )
-            """)
-
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS paper_trades (
-                    id INTEGER PRIMARY KEY,
-                    symbol TEXT NOT NULL,
-                    quantity REAL,
-                    entry_price REAL,
-                    current_price REAL,
-                    total_investment REAL,
-                    current_value REAL,
-                    status TEXT DEFAULT 'OPEN', -- OPEN, CLOSED
-                    opened_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    closed_at TIMESTAMP
-                )
-            """)
-            
-            conn.commit()
-
-    def log_api_usage(self, model: str, input_tokens: int, output_tokens: int, cost: float):
-        """Log API usage for cost tracking"""
-        with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
-                INSERT INTO api_usage (model, input_tokens, output_tokens, cost)
-                VALUES (?, ?, ?, ?)
-            """, (model, input_tokens, output_tokens, cost))
-
-    def save_recommendation(self, rec: Dict) -> int:
-        """Save recommendation and return ID"""
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
-                INSERT INTO recommendations 
-                (symbol, recommendation, conviction, entry_price, stop_loss, 
-                 target_price, fundamentals_score, technical_score, reasoning, risks_json, news_sentiment, news_json, atr_stop, atr14, reflection)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                rec["symbol"],
-                rec["recommendation"],
-                rec["conviction"],
-                rec["entry_price"],
-                rec["stop_loss"],
-                rec["target_price"],
-                rec["fundamentals_score"],
-                rec["technical_score"],
-                rec["reasoning"],
-                json.dumps(rec.get("risks", [])),
-                rec.get("news_sentiment", 3),
-                rec.get("news_json", "[]"),
-                rec.get("atr_stop"),
-                rec.get("atr14"),
-                rec.get("reflection", "")
-            ))
-            conn.commit()
-            return cursor.lastrowid
-    
-    def get_accuracy(self) -> Dict:
-        """Calculate recommendation accuracy"""
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
             
             # Count profitable BUY recommendations
             cursor.execute("""
@@ -197,21 +67,27 @@ class RecommendationDB:
     def save_backtest(self, symbols: list, aggregate_stats: dict, results: dict) -> int:
         """Save a complete backtest run history"""
         import json
-        with sqlite3.connect(self.db_path) as conn:
+        p = self._get_placeholder()
+        with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
-                "INSERT INTO backtests (symbols, aggregate_stats, results_json) VALUES (?, ?, ?)",
+                f"INSERT INTO backtests (symbols, aggregate_stats, results_json) VALUES ({p}, {p}, {p})",
                 (",".join(symbols), json.dumps(aggregate_stats), json.dumps(results))
             )
-            conn.commit()
-            return cursor.lastrowid
+            if not self.is_postgres:
+                conn.commit()
+            return cursor.lastrowid if not self.is_postgres else None
             
     def get_recent_backtests(self) -> list:
         """Get summary of recent backtests"""
         import json
-        with sqlite3.connect(self.db_path) as conn:
-            conn.row_factory = sqlite3.Row
-            cursor = conn.cursor()
+        with self.get_connection() as conn:
+            if self.is_postgres:
+                cursor = conn.cursor(cursor_factory=RealDictCursor)
+            else:
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
+            
             cursor.execute("SELECT id, run_date, symbols, aggregate_stats FROM backtests ORDER BY run_date DESC LIMIT 10")
             
             results = []
@@ -227,10 +103,14 @@ class RecommendationDB:
     def get_backtest_by_id(self, backtest_id: int) -> dict:
         """Get a specific backtest run by ID"""
         import json
-        with sqlite3.connect(self.db_path) as conn:
-            conn.row_factory = sqlite3.Row
-            cursor = conn.cursor()
-            cursor.execute("SELECT * FROM backtests WHERE id = ?", (backtest_id,))
+        p = self._get_placeholder()
+        with self.get_connection() as conn:
+            if self.is_postgres:
+                cursor = conn.cursor(cursor_factory=RealDictCursor)
+            else:
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
+            cursor.execute(f"SELECT * FROM backtests WHERE id = {p}", (backtest_id,))
             row = cursor.fetchone()
             if row:
                 return {
@@ -244,12 +124,16 @@ class RecommendationDB:
             
     def get_last_recommendation(self, symbol: str) -> Optional[Dict]:
         """Check for the most recent recommendation for a symbol"""
-        with sqlite3.connect(self.db_path) as conn:
-            conn.row_factory = sqlite3.Row
-            cursor = conn.cursor()
-            cursor.execute("""
+        p = self._get_placeholder()
+        with self.get_connection() as conn:
+            if self.is_postgres:
+                cursor = conn.cursor(cursor_factory=RealDictCursor)
+            else:
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
+            cursor.execute(f"""
                 SELECT * FROM recommendations 
-                WHERE symbol = ? 
+                WHERE symbol = {p} 
                 ORDER BY created_at DESC LIMIT 1
             """, (symbol,))
             row = cursor.fetchone()
@@ -353,21 +237,6 @@ class RecommendationEngine:
 
             recommendation_text = response.content[0].text
             
-            # --- Cost Analysis Logging ---
-            try:
-                in_tokens = getattr(response.usage, 'input_tokens', 0)
-                out_tokens = getattr(response.usage, 'output_tokens', 0)
-                # Haiku Pricing: $0.25/MT input, $1.25/MT output
-                cost = (in_tokens * (0.25/1000000)) + (out_tokens * (1.25/1000000))
-                with sqlite3.connect(self.db.db_path) as conn:
-                    conn.execute(
-                        "INSERT INTO api_usage (model, input_tokens, output_tokens, cost) VALUES (?, ?, ?, ?)",
-                        (response.model, in_tokens, out_tokens, cost)
-                    )
-                    conn.commit()
-            except Exception as cost_err:
-                print(f"Usage logging error: {cost_err}")
-            # -----------------------------
 
             # 5. Parse Claude's response
             rec = self._parse_recommendation(
@@ -458,13 +327,14 @@ class RecommendationEngine:
 
     def _get_performance_history(self, symbol: str) -> str:
         """Get past performance context for this symbol"""
+        p = self.db._get_placeholder()
         try:
-            with sqlite3.connect(self.db.db_path) as conn:
+            with self.db.get_connection() as conn:
                 cursor = conn.cursor()
-                cursor.execute("""
+                cursor.execute(f"""
                     SELECT status, return_pct, check_date 
                     FROM outcomes 
-                    WHERE symbol = ? 
+                    WHERE symbol = {p} 
                     ORDER BY check_date DESC LIMIT 3
                 """, (symbol,))
                 rows = cursor.fetchall()
@@ -482,7 +352,7 @@ class RecommendationEngine:
     def _get_portfolio_stats(self) -> str:
         """Get high-level portfolio performance summary"""
         try:
-            with sqlite3.connect(self.db.db_path) as conn:
+            with self.db.get_connection() as conn:
                 cursor = conn.cursor()
                 cursor.execute("SELECT COUNT(*), AVG(return_pct) FROM outcomes WHERE status != 'OPEN'")
                 total, avg = cursor.fetchone()
