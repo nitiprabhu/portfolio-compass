@@ -57,7 +57,7 @@ app.add_middleware(
 engine = RecommendationEngine()
 
 # Database Migration: ensure peak_price and news_sentiment exists
-with sqlite3.connect(engine.db.db_path) as conn:
+with sqlite3.connect(engine.db_path) as conn:
     try:
         conn.execute("ALTER TABLE outcomes ADD COLUMN peak_price REAL")
     except:
@@ -83,15 +83,13 @@ class AnalysisRequest(BaseModel):
 def get_all_recommendations():
     """Returns recommendations for symbols in watchlist or active portfolio — used by the Dashboard table."""
     try:
-        with sqlite3.connect(engine.db.db_path) as conn:
+        with sqlite3.connect(engine.db_path) as conn:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
-            # Filter to show only symbols user is tracking in watchlist or has open in outcomes
+            # Show all recent recommendations
             cursor.execute("""
-                SELECT r.* FROM recommendations r
-                WHERE r.symbol IN (SELECT symbol FROM watchlist)
-                   OR r.symbol IN (SELECT symbol FROM outcomes WHERE status = 'OPEN')
-                ORDER BY r.created_at DESC LIMIT 50
+                SELECT * FROM recommendations 
+                ORDER BY created_at DESC LIMIT 50
             """)
             rows = cursor.fetchall()
             return {"status": "success", "data": [dict(ix) for ix in rows]}
@@ -101,6 +99,7 @@ def get_all_recommendations():
 
 @app.post("/api/analyze")
 def trigger_analysis(req: AnalysisRequest, background_tasks: BackgroundTasks):
+    print(f"DEBUG: Triggering analysis for symbols: {req.symbols}")
     def run_analysis(symbols):
         mood = news_results.get("data", {}).get("market_mood")
         history = news_results.get("history", [])
@@ -108,7 +107,7 @@ def trigger_analysis(req: AnalysisRequest, background_tasks: BackgroundTasks):
         
         # ── Send a quick Telegram summary after manual trigger ──
         try:
-            with sqlite3.connect(engine.db.db_path) as conn:
+            with sqlite3.connect(engine.db_path) as conn:
                 cursor = conn.cursor()
                 # Get last 1 minute recs
                 time_threshold = (datetime.now() - timedelta(minutes=1)).strftime('%Y-%m-%d %H:%M:%S')
@@ -192,13 +191,17 @@ def get_discovery_results():
     return discovery_results
 
 def run_discovery_job():
-    global discovery_results
+    def update_progress(msg):
+        discovery_results["message"] = msg
+
     try:
         discovery_results["status"] = "running"
-        results = scanner.run_scan()
+        discovery_results["message"] = "Initializing..."
+        results = scanner.run_scan(progress_callback=update_progress)
         discovery_results = {
             "status": "completed",
             "data": results,
+            "message": "Scan complete!",
             "last_run": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
         
@@ -305,7 +308,7 @@ if os.path.exists("news_cache.json"):
 @app.get("/api/portfolio")
 def get_portfolio():
     try:
-        with sqlite3.connect(engine.db.db_path) as conn:
+        with sqlite3.connect(engine.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute("""
                 SELECT r.symbol, r.recommendation, r.entry_price, r.target_price, r.stop_loss, r.created_at, o.status
@@ -328,7 +331,7 @@ def get_portfolio():
         total_invested = 0
         total_current = 0
         
-        with sqlite3.connect(engine.db.db_path) as conn:
+        with sqlite3.connect(engine.db_path) as conn:
             for pos in positions:
                 symbol, action, entry, target, stop, date, status = pos
                 if entry is None: continue
@@ -432,7 +435,7 @@ def get_portfolio():
 @app.get("/api/watchlist")
 def get_watchlist():
     try:
-        with sqlite3.connect(engine.db.db_path) as conn:
+        with sqlite3.connect(engine.db_path) as conn:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
             cursor.execute("SELECT * FROM watchlist ORDER BY added_at DESC")
@@ -451,9 +454,10 @@ def get_watchlist():
 
 @app.post("/api/watchlist")
 def add_to_watchlist(symbol: str):
+    print(f"DEBUG: Adding {symbol} to watchlist")
     try:
         symbol = symbol.upper().strip()
-        with sqlite3.connect(engine.db.db_path) as conn:
+        with sqlite3.connect(engine.db_path) as conn:
             cursor = conn.cursor()
             # 3 month expiry
             expires_at = (datetime.now() + timedelta(days=90)).strftime('%Y-%m-%d %H:%M:%S')
@@ -470,7 +474,7 @@ def add_to_watchlist(symbol: str):
 def remove_from_watchlist(symbol: str):
     try:
         symbol = symbol.upper().strip()
-        with sqlite3.connect(engine.db.db_path) as conn:
+        with sqlite3.connect(engine.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute("DELETE FROM watchlist WHERE symbol = ?", (symbol,))
             conn.commit()
@@ -481,7 +485,7 @@ def remove_from_watchlist(symbol: str):
 @app.get("/api/cost-analysis")
 def get_cost_analysis():
     try:
-        with sqlite3.connect(engine.db.db_path) as conn:
+        with sqlite3.connect(engine.db_path) as conn:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
             
@@ -522,7 +526,7 @@ def get_cost_analysis():
 @app.get("/api/paper-trades")
 def get_paper_trades():
     try:
-        with sqlite3.connect(engine.db.db_path) as conn:
+        with sqlite3.connect(engine.db_path) as conn:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
             cursor.execute("SELECT * FROM paper_trades ORDER BY opened_at DESC")
@@ -554,7 +558,7 @@ def send_telegram_alert(message: str):
 def send_weekly_status():
     """Calculates and sends a performance summary every Sunday."""
     try:
-        with sqlite3.connect(engine.db.db_path) as conn:
+        with sqlite3.connect(engine.db_path) as conn:
             cursor = conn.cursor()
             # 1. Total Stats
             cursor.execute("SELECT COUNT(*), AVG(return_pct), MAX(return_pct) FROM outcomes WHERE check_date > datetime('now', '-7 days')")
@@ -594,7 +598,7 @@ def check_sector_concentration() -> Optional[str]:
         "CPER": "Basic Materials", "URA": "Energy", "CNXT": "International/ETF"
     }
     try:
-        with sqlite3.connect(engine.db.db_path) as conn:
+        with sqlite3.connect(engine.db_path) as conn:
             cursor = conn.cursor()
             # Check BUY recommendations from the last 7 days
             threshold = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d %H:%M:%S')
@@ -628,7 +632,7 @@ def check_sector_concentration() -> Optional[str]:
 def monitor_portfolio_alerts():
     """Scans open positions and fires Telegram when stops or targets are hit."""
     try:
-        with sqlite3.connect(engine.db.db_path) as conn:
+        with sqlite3.connect(engine.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute("""
                 SELECT r.symbol, r.entry_price, r.target_price, r.stop_loss, o.peak_price
@@ -731,7 +735,7 @@ async def background_daily_analysis():
                 
                 # Check for BUY Alerts
                 time_threshold = (now - timedelta(minutes=15)).strftime('%Y-%m-%d %H:%M:%S')
-                with sqlite3.connect(engine.db.db_path) as conn:
+                with sqlite3.connect(engine.db_path) as conn:
                     cursor = conn.cursor()
                     cursor.execute("""
                         SELECT symbol, recommendation, conviction, entry_price, target_price, stop_loss 
@@ -771,7 +775,7 @@ async def background_daily_analysis():
                 
                 # ── Watchlist Paper Trading ─────
                 print(f"[{now}] Processing Watchlist & Paper Trading...")
-                with sqlite3.connect(engine.db.db_path) as conn:
+                with sqlite3.connect(engine.db_path) as conn:
                     cursor = conn.cursor()
                     cursor.execute("SELECT symbol FROM watchlist")
                     watch_symbols = [row[0] for row in cursor.fetchall()]
@@ -781,7 +785,7 @@ async def background_daily_analysis():
                     if not rec: continue
                     
                     price = rec['entry_price']
-                    with sqlite3.connect(engine.db.db_path) as conn:
+                    with sqlite3.connect(engine.db_path) as conn:
                         cursor = conn.cursor()
                         cursor.execute("SELECT id, quantity FROM paper_trades WHERE symbol = ? AND status = 'OPEN'", (ws,))
                         active_trade = cursor.fetchone()
@@ -833,7 +837,7 @@ async def background_daily_analysis():
                 
                 # ── Watchlist Paper Trading ─────
                 print(f"[{now}] Processing Watchlist & Paper Trading...")
-                with sqlite3.connect(engine.db.db_path) as conn:
+                with sqlite3.connect(engine.db_path) as conn:
                     cursor = conn.cursor()
                     cursor.execute("SELECT symbol FROM watchlist")
                     watch_symbols = [row[0] for row in cursor.fetchall()]
@@ -843,7 +847,7 @@ async def background_daily_analysis():
                     if not rec: continue
                     
                     price = rec['entry_price']
-                    with sqlite3.connect(engine.db.db_path) as conn:
+                    with sqlite3.connect(engine.db_path) as conn:
                         cursor = conn.cursor()
                         cursor.execute("SELECT id, quantity FROM paper_trades WHERE symbol = ? AND status = 'OPEN'", (ws,))
                         active_trade = cursor.fetchone()

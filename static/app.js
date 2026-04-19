@@ -1,5 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     const API_URL = '';
+    console.log('Portfolio Compass App Initialized');
     
     // UI Utility: Clean Markdown from LLM reasoning
     const cleanMD = (text) => {
@@ -9,7 +10,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function showView(viewId) {
         document.querySelectorAll('[id^="view-"]').forEach(v => v.classList.add('hidden'));
-        const targetView = document.getElementById(viewId);
+        let targetView = document.getElementById(viewId);
+        if (viewId === 'view-recommendations') {
+            targetView = document.getElementById('view-dashboard');
+        }
         if (targetView) targetView.classList.remove('hidden');
         
         document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -21,12 +25,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (headerTitle) {
             const viewNames = {
                 'view-dashboard': 'Dashboard',
+                'view-recommendations': 'Dashboard',
                 'view-portfolio': 'Live Portfolio',
                 'view-backtest': 'Proof of History',
                 'view-discovery': 'Market Discovery',
                 'view-intelligence': 'News Intelligence',
                 'view-watchlist': 'Model Watchlist',
-                'view-costs': 'Cost Analysis'
+                'view-costs': 'Cost Analysis',
+                'view-settings': 'Settings'
             };
             if (viewNames[viewId]) headerTitle.textContent = viewNames[viewId];
         }
@@ -82,11 +88,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify({ symbols })
             });
             const data = await res.json();
+            console.log('Analysis response:', data);
             if(statusMsg) {
                 statusMsg.textContent = data.message;
                 statusMsg.classList.remove('hidden');
             }
-        } catch (e) { console.error(e); } finally {
+        } catch (e) { console.error('Analysis Error:', e); } finally {
             startAnalysisBtn.textContent = 'Start Analysis';
             startAnalysisBtn.disabled = false;
         }
@@ -292,6 +299,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- Discovery Logic ---
+    const runDiscoveryBtn = document.getElementById('run-discovery-btn');
+    const discoveryStatus = document.getElementById('discovery-status');
+
     async function fetchDiscoveryResults() {
         try {
             const grid = document.getElementById('discovery-results-grid');
@@ -317,7 +327,39 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (e) { console.error(e); }
     }
 
+    runDiscoveryBtn?.addEventListener('click', async () => {
+        try {
+            runDiscoveryBtn.disabled = true;
+            discoveryStatus?.style.setProperty('display', 'block');
+            await fetch(`${API_URL}/api/discover/run`, { method: 'POST' });
+            
+            // Poll for completion
+            const poll = setInterval(async () => {
+                const res = await fetch(`${API_URL}/api/discover`);
+                const data = await res.json();
+                
+                if (data.status === 'running' && data.message) {
+                    const statusSpan = discoveryStatus?.querySelector('span');
+                    if (statusSpan) statusSpan.textContent = data.message;
+                }
+
+                if (data.status === 'success' || data.status === 'completed') {
+                    clearInterval(poll);
+                    fetchDiscoveryResults();
+                    runDiscoveryBtn.disabled = false;
+                    discoveryStatus?.style.setProperty('display', 'none');
+                }
+            }, 5000);
+        } catch (e) { 
+            console.error(e); 
+            runDiscoveryBtn.disabled = false;
+        }
+    });
+
     // --- Watchlist Logic ---
+    const watchlistAddBtn = document.getElementById('watchlist-add-btn');
+    const watchlistAddInput = document.getElementById('watchlist-add-input');
+
     async function fetchWatchlist() {
         try {
             const tbody = document.getElementById('watchlist-tbody');
@@ -340,6 +382,19 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (e) { console.error(e); }
     }
+
+    watchlistAddBtn?.addEventListener('click', async () => {
+        const symbol = watchlistAddInput?.value.trim().toUpperCase();
+        if(!symbol) return;
+        try {
+            console.log(`Adding ${symbol} to watchlist...`);
+            const res = await fetch(`${API_URL}/api/watchlist?symbol=${symbol}`, { method: 'POST' });
+            const data = await res.json();
+            console.log('Watchlist response:', data);
+            watchlistAddInput.value = '';
+            fetchWatchlist();
+        } catch (e) { console.error('Watchlist Error:', e); } finally { watchlistAddBtn.disabled = false; }
+    });
 
     // --- Cost Analysis Logic ---
     async function fetchCostAnalysis() {
