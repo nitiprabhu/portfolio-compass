@@ -6,13 +6,26 @@
     <title>Portfolio Compass</title>
     <meta name="description" content="AI-Powered Stock Recommendations for Busy Professionals">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=2">
+    <link rel="stylesheet" href="style.css?v=4">
     <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
     <div class="app-container">
+        <!-- Mobile Header -->
+        <div class="mobile-header">
+            <div class="logo">
+                <i data-lucide="compass" class="logo-icon"></i>
+                <span>Compass</span>
+            </div>
+            <button id="mobile-menu-trigger">
+                <i data-lucide="menu"></i>
+            </button>
+        </div>
+
+        <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
         <!-- Sidebar -->
-        <aside class="sidebar">
+        <aside class="sidebar" id="app-sidebar">
             <div class="logo">
                 <i data-lucide="compass" class="logo-icon"></i>
                 <span>Portfolio Compass</span>
@@ -168,12 +181,12 @@
 
             <div id="view-portfolio" class="hidden">
                 <div class="section-container glass-panel">
-                    <div class="section-header" style="justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255, 255, 255, 0.1); padding-bottom: 20px;">
+                    <div class="section-header portfolio-header">
                         <div>
                             <h2>Live Positions</h2>
                             <p class="subtitle">Real-time tracking of active recommendations</p>
                         </div>
-                        <div class="portfolio-stats" style="display: flex; gap: 30px;">
+                        <div class="portfolio-stats">
                             <div class="p-stat">
                                 <span class="stat-label" style="color: var(--text-muted); font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Total Value</span>
                                 <div class="stat-val" id="port-value" style="font-size: 24px; font-weight: 700; color: var(--text-main);">$0.00</div>
@@ -189,12 +202,17 @@
                         </div>
                     </div>
                     
+                    <!-- New: Portfolio Heatmap -->
+                    <div id="portfolio-heatmap" class="heatmap-container" style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px;">
+                        <!-- JS populated tiles -->
+                    </div>
+                    
                     <div id="loading-state-port" class="loading-state hidden">
                         <div class="spinner"></div>
                         <p>Syncing portfolio...</p>
                     </div>
 
-                    <div class="table-responsive" style="margin-top: 20px;">
+                    <div class="table-container portfolio-container">
                         <table class="data-table portfolio-table">
                             <thead>
                                 <tr>
@@ -281,7 +299,7 @@
                     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px;">
                         <div>
                             <h2 style="font-size: 18px; font-weight: 600; color: var(--text-main); margin-bottom: 4px;">Market Discovery</h2>
-                            <p style="color: var(--text-muted); font-size: 13px;">AI-scanned high potential Mid & Small Cap candidates</p>
+                            <p style="color: var(--text-muted); font-size: 13px;">AI-scanned high potential Small & Micro-Cap candidates</p>
                         </div>
                         <button class="btn btn-primary" id="run-discovery-btn" style="padding: 8px 16px; font-size: 13px;">
                             <i data-lucide="scan-eye"></i> Scan Market ($0.02)
