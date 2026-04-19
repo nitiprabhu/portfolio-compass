@@ -20,6 +20,10 @@ if os.path.exists(".env"):
                 os.environ.setdefault(_k, _v)
 
 from recommendation_engine import RecommendationEngine
+try:
+    from psycopg2.extras import RealDictCursor
+except ImportError:
+    RealDictCursor = None
 from weekly_backtest import run_backtest_job
 from scanner import MarketScanner
 from intelligence import NewsIntelligence
@@ -46,22 +50,28 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, 
 engine = RecommendationEngine()
 
 # Database Migration & Watchlist Persistence
-with sqlite3.connect(engine.db_path) as conn:
+with engine.db.get_connection() as conn:
+    cursor = conn.cursor()
     for col in [" peak_price REAL", " news_sentiment INTEGER", " news_json TEXT", " reflection TEXT"]:
-        try: conn.execute(f"ALTER TABLE outcomes ADD COLUMN {col}")
+        try: cursor.execute(f"ALTER TABLE outcomes ADD COLUMN {col}")
         except: pass
     for col in [" last_alert_type TEXT", " last_price REAL", " last_alert_at TEXT"]:
-        try: conn.execute(f"ALTER TABLE watchlist ADD COLUMN {col}")
+        try: cursor.execute(f"ALTER TABLE watchlist ADD COLUMN {col}")
         except: pass
+    if not engine.db.is_postgres:
+        conn.commit()
 
 class AnalysisRequest(BaseModel): symbols: List[str]
 
 @app.get("/api/recommendations")
 def get_all_recommendations():
     try:
-        with sqlite3.connect(engine.db_path) as conn:
-            conn.row_factory = sqlite3.Row
-            cursor = conn.cursor()
+        with engine.db.get_connection() as conn:
+            if engine.db.is_postgres:
+                cursor = conn.cursor(cursor_factory=RealDictCursor)
+            else:
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
             cursor.execute("SELECT * FROM recommendations ORDER BY created_at DESC LIMIT 50")
             return {"status": "success", "data": [dict(ix) for ix in cursor.fetchall()]}
     except Exception as e: return {"status": "error", "message": str(e)}
@@ -78,14 +88,31 @@ def trigger_analysis(req: AnalysisRequest, background_tasks: BackgroundTasks):
 @app.get("/api/news-intelligence")
 async def get_news_intelligence(force_refresh: bool = False):
     global news_results
-    if not force_refresh and news_results["expires_at"] and datetime.now() < datetime.fromisoformat(news_results["expires_at"]):
-        return {"status": "success", "data": news_results["data"], "cached": True}
+    
+    # 1. Check database first if not forced
+    if not force_refresh:
+        latest = engine.db.get_latest_news_intelligence()
+        if latest:
+            # Sync global state for other components
+            news_results = {
+                "status": "completed", 
+                "data": latest["data"], 
+                "last_run": str(latest["run_date"]),
+                "expires_at": str(latest["expires_at"])
+            }
+            return {"status": "success", "data": latest["data"], "cached": True}
+
+    # 2. Otherwise run new scan
     try:
         results = await asyncio.to_thread(news_intel.run_daily_scan)
+        
+        # 3. Save to database with 7 day TTL
+        engine.db.save_news_intelligence(results, ttl_days=7)
+        
         news_results = {
             "status": "completed", "data": results, 
             "last_run": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "expires_at": (datetime.now() + timedelta(hours=1)).isoformat()
+            "expires_at": (datetime.now() + timedelta(days=7)).isoformat()
         }
         return {"status": "success", "data": results, "cached": False}
     except Exception as e: return {"status": "error", "message": str(e)}
@@ -93,13 +120,13 @@ async def get_news_intelligence(force_refresh: bool = False):
 @app.get("/api/portfolio")
 def get_portfolio():
     try:
-        with sqlite3.connect(engine.db_path) as conn:
+        with engine.db.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
                 SELECT r.symbol, r.recommendation, r.entry_price, r.target_price, r.stop_loss, r.created_at, o.status, r.technical_score
                 FROM recommendations r LEFT JOIN outcomes o ON r.id = o.recommendation_id
                 WHERE r.recommendation = 'BUY' AND (o.status IS NULL OR o.status = 'OPEN')
-                AND r.symbol NOT IN (SELECT symbol FROM watchlist) GROUP BY r.symbol ORDER BY r.created_at DESC
+                AND r.symbol NOT IN (SELECT symbol FROM watchlist) GROUP BY 1,2,3,4,5,6,7,8 ORDER BY r.created_at DESC
             """)
             positions = cursor.fetchall()
 
@@ -130,36 +157,64 @@ def get_portfolio():
 
 @app.get("/api/watchlist")
 def get_watchlist():
-    with sqlite3.connect(engine.db_path) as conn:
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
+    with engine.db.get_connection() as conn:
+        if engine.db.is_postgres:
+            cursor = conn.cursor(cursor_factory=RealDictCursor)
+        else:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
         cursor.execute("SELECT * FROM watchlist ORDER BY added_at DESC")
         return {"status": "success", "data": [dict(r) for r in cursor.fetchall()]}
 
 @app.post("/api/watchlist")
 def add_to_watchlist(symbol: str):
-    with sqlite3.connect(engine.db_path) as conn:
+    p = engine.db._get_placeholder()
+    with engine.db.get_connection() as conn:
+        cursor = conn.cursor()
         expires = (datetime.now() + timedelta(days=90)).strftime('%Y-%m-%d %H:%M:%S')
-        conn.execute("INSERT OR IGNORE INTO watchlist (symbol, expires_at) VALUES (?, ?)", (symbol.upper(), expires))
+        if engine.db.is_postgres:
+            cursor.execute("INSERT INTO watchlist (symbol, expires_at) VALUES (%s, %s) ON CONFLICT (symbol) DO NOTHING", (symbol.upper(), expires))
+        else:
+            cursor.execute("INSERT OR IGNORE INTO watchlist (symbol, expires_at) VALUES (?, ?)", (symbol.upper(), expires))
+        if not engine.db.is_postgres:
+            conn.commit()
     return {"status": "success"}
 
 @app.delete("/api/watchlist/{symbol}")
 def remove_from_watchlist(symbol: str):
-    with sqlite3.connect(engine.db_path) as conn:
-        conn.execute("DELETE FROM watchlist WHERE symbol = ?", (symbol.upper(),))
+    p = engine.db._get_placeholder()
+    with engine.db.get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(f"DELETE FROM watchlist WHERE symbol = {p}", (symbol.upper(),))
+        if not engine.db.is_postgres:
+            conn.commit()
     return {"status": "success"}
 
 @app.get("/api/cost-analysis")
 def get_cost_analysis():
-    with sqlite3.connect(engine.db_path) as conn:
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-        cursor.execute("SELECT SUM(cost), COUNT(*) FROM api_usage")
+    with engine.db.get_connection() as conn:
+        if engine.db.is_postgres:
+            cursor = conn.cursor(cursor_factory=RealDictCursor)
+        else:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+        cursor.execute("SELECT SUM(cost) as total_cost, COUNT(*) as total_calls FROM api_usage")
         stats = cursor.fetchone()
-        return {"status": "success", "summary": {"total_cost": stats[0] or 0, "total_calls": stats[1] or 0}}
+        return {"status": "success", "summary": {"total_cost": stats[0] if not engine.db.is_postgres else stats['total_cost'] or 0, "total_calls": stats[1] if not engine.db.is_postgres else stats['total_calls'] or 0}}
 
 @app.get("/api/discover")
-def get_discovery_api(): return discovery_results
+def get_discovery_api():
+    global discovery_results
+    
+    # Try to load from database first
+    latest = engine.db.get_latest_discovery_results()
+    if latest:
+        discovery_results = {
+            "status": "completed", 
+            "data": latest["data"], 
+            "last_run": str(latest["run_date"])
+        }
+    return discovery_results
 
 @app.post("/api/discover/run")
 def trigger_discovery(background_tasks: BackgroundTasks):
@@ -167,6 +222,8 @@ def trigger_discovery(background_tasks: BackgroundTasks):
         global discovery_results
         discovery_results["status"] = "running"
         res = scanner.run_scan()
+        # Persist to database!
+        engine.db.save_discovery_results(res)
         discovery_results = {"status": "completed", "data": res, "last_run": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
     background_tasks.add_task(run_discovery)
     return {"status": "started"}
@@ -198,6 +255,7 @@ async def background_daily_analysis():
             try:
                 # 1. News Intelligence
                 intel = await asyncio.to_thread(news_intel.run_daily_scan)
+                engine.db.save_news_intelligence(intel, ttl_days=7) # Persist!
                 market_mood = intel.get("market_mood", "Neutral")
                 if "summary_for_telegram" in intel: send_telegram_alert(intel["summary_for_telegram"])
                 
@@ -208,7 +266,7 @@ async def background_daily_analysis():
                 
                 # 3. Watchlist Review
                 watchlist_alerts = []
-                with sqlite3.connect(engine.db_path) as conn:
+                with engine.db.get_connection() as conn:
                     cursor = conn.cursor()
                     cursor.execute("SELECT symbol FROM watchlist")
                     for ws_row in cursor.fetchall():

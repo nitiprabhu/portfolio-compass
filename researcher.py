@@ -1,9 +1,4 @@
-import os
-import sqlite3
-import yfinance as yf
-from datetime import datetime
-import anthropic
-import json
+from database import RecommendationDB
 
 class StockResearcher:
     def __init__(self):
@@ -17,7 +12,7 @@ class StockResearcher:
         
         self.api_key = os.environ.get("ANTHROPIC_API_KEY")
         self.client = anthropic.Anthropic(api_key=self.api_key)
-        self.db_path = "recommendations.db"
+        self.db = RecommendationDB()
 
     def deep_research(self, symbol: str, question: str) -> dict:
         """
@@ -29,7 +24,6 @@ class StockResearcher:
             ticker = yf.Ticker(symbol)
             
             # 1. Gather "Big Data" Context
-            # Company Profile
             info = ticker.info
             profile = {
                 "name": info.get("longName"),
@@ -39,7 +33,7 @@ class StockResearcher:
                 "website": info.get("website")
             }
             
-            # Latest News (Up to 15 articles)
+            # Latest News
             news_items = ticker.news[:15]
             news_context = ""
             for n in news_items:
@@ -47,32 +41,16 @@ class StockResearcher:
                 pub = n.get('content', {}).get('publisher', 'Unknown')
                 news_context += f"- {title} (Source: {pub})\n"
 
-            # Historical Context from our own DB
+            # Historical Context
             internal_memory = self._get_internal_memory(symbol)
 
             # 2. Build Researcher Prompt
             prompt = f"""
             You are the "Portfolio Compass Research Lead". 
-            Your goal is to answer a specific investor question based on provided context and internal history.
-
-            --- INVESTOR QUESTION ---
-            {question}
-
-            --- COMPANY PROFILE ---
-            {json.dumps(profile, indent=2)}
-
-            --- RECENT HEADLINES ---
-            {news_context}
-
-            --- INTERNAL EVALUATION HISTORY ---
-            {internal_memory}
-
-            --- INSTRUCTIONS ---
-            1. Be objective and skeptical. Look for risks.
-            2. Cross-reference the news with the company profile.
-            3. If the internal history shows we were previously bullish but news is now bearish, highlight the "Pivot".
-            4. Provide a "Bottom Line" at the end.
-            5. Return your response in clear Markdown.
+            Answer this question: {question}
+            COMPANY PROFILE: {json.dumps(profile)}
+            NEWS: {news_context}
+            HISTORY: {internal_memory}
             """
 
             # 3. Call Claude
@@ -91,43 +69,26 @@ class StockResearcher:
                 "answer": response.content[0].text,
                 "sources_count": len(news_items)
             }
-
         except Exception as e:
             return {"status": "error", "message": str(e)}
 
     def _get_internal_memory(self, symbol: str) -> str:
-        """Retrieves our past AI recommendations for this stock to provide continuity."""
+        p = self.db._get_placeholder()
         try:
-            with sqlite3.connect(self.db_path) as conn:
-                conn.row_factory = sqlite3.Row
-                cursor = conn.cursor()
-                cursor.execute("""
-                    SELECT created_at, recommendation, conviction, technical_score, reasoning 
-                    FROM recommendations 
-                    WHERE symbol = ? 
-                    ORDER BY created_at DESC LIMIT 3
-                """, (symbol,))
+            with self.db.get_connection() as conn:
+                from database import RealDictCursor
+                cursor = conn.cursor(cursor_factory=RealDictCursor) if self.db.is_postgres else conn.cursor()
+                if not self.db.is_postgres: conn.row_factory = sqlite3.Row
+                cursor.execute(f"SELECT created_at, recommendation, conviction, technical_score, reasoning FROM recommendations WHERE symbol = {p} ORDER BY created_at DESC LIMIT 3", (symbol,))
                 rows = cursor.fetchall()
-                if not rows: return "No internal history for this asset."
-                
+                if not rows: return "No internal history."
                 mem = "OUR RECENT EVALUATIONS:\n"
                 for r in rows:
-                    mem += f"- {r['created_at']}: {r['recommendation']} (Conviction: {r['conviction']}%) | Tech Score: {r['technical_score']}\n"
-                    mem += f"  Reasoning Snippet: {r['reasoning'][:150]}...\n"
+                    mem += f"- {r['created_at']}: {r['recommendation']} ({r['conviction']}%) | Score: {r['technical_score']}\n"
                 return mem
         except:
             return "Internal memory lookup failed."
 
     def _log_usage(self, model: str, in_tokens: int, out_tokens: int):
-        """Standardize logging with the main app"""
-        try:
-            # Pricing for Sonnet 3.5: $3/MT input, $15/MT output
-            cost = (in_tokens * (3.0/1000000)) + (out_tokens * (15.0/1000000))
-            with sqlite3.connect(self.db_path) as conn:
-                conn.execute(
-                    "INSERT INTO api_usage (model, input_tokens, output_tokens, cost) VALUES (?, ?, ?, ?)",
-                    (model, in_tokens, out_tokens, cost)
-                )
-                conn.commit()
-        except:
-            pass
+        cost = (in_tokens * (3.0/1000000)) + (out_tokens * (15.0/1000000))
+        self.db.log_api_usage(model, in_tokens, out_tokens, cost)
