@@ -199,6 +199,17 @@ def run_discovery_job():
             "data": results,
             "last_run": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
+        
+        # ── Send Telegram Alert for Discovery Completion ──
+        if results:
+            top_3 = results[:3]
+            summary = "🔍 <b>Market Discovery Scan Complete!</b>\n\n"
+            summary += "AI has identified 3 new high-potential candidates:\n"
+            for r in top_3:
+                summary += f"• <b>{r['symbol']}</b>: {r['recommendation']} (Conviction: {r['conviction']}%)\n"
+            summary += "\nCheck the dashboard for the full list of Mid/Small cap gems."
+            send_telegram_alert(summary)
+            
         # Persist to disk
         try:
             with open("discovery_cache.json", "w") as f:
@@ -206,6 +217,7 @@ def run_discovery_job():
         except: pass
     except Exception as e:
         discovery_results = {"status": "error", "message": str(e), "data": [], "last_run": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+        send_telegram_alert(f"⚠️ Discovery Scan Failed: {e}")
 
 # ── Load Discovery Cache on Startup ──
 if os.path.exists("discovery_cache.json"):
@@ -609,10 +621,15 @@ async def background_daily_analysis():
         now = datetime.now()
         current_day = now.weekday()
         
-        # ── Sunday Weekly Report ─────
+        # ── Sunday Weekly Report & Discovery Scan ─────
         if current_day == 6 and last_sunday_report_date != now.date():
             print(f"[{now}] Processing Weekly Sunday Status...")
             send_weekly_status()
+            
+            # Also run the expensive Discovery Scan automatically on Sundays
+            print(f"[{now}] Starting Automated Market Discovery Scan...")
+            run_discovery_job()
+            
             last_sunday_report_date = now.date()
 
         # ── Daily Analysis (Monday–Friday) ─────
