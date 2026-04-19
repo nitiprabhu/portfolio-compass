@@ -15,6 +15,7 @@ class RecommendationDB:
         self.db_path = db_path
         self.database_url = os.environ.get("DATABASE_URL")
         self.is_postgres = self.database_url is not None and self.database_url.startswith("postgres")
+        print(f"📡 [DB INIT] Mode: {'PostgreSQL' if self.is_postgres else 'SQLite (Local)'}")
         self.init_db()
 
     def get_connection(self):
@@ -116,6 +117,15 @@ class RecommendationDB:
                 )
             """)
             
+            # Add discovery_results table
+            cursor.execute(f"""
+                CREATE TABLE IF NOT EXISTS discovery_results (
+                    id {pk_type},
+                    run_date TIMESTAMP DEFAULT {timestamp_default},
+                    data_json {json_type}
+                )
+            """)
+            
             if not self.is_postgres:
                 conn.commit()
 
@@ -187,11 +197,12 @@ class RecommendationDB:
             cursor.execute("SELECT id, run_date, symbols, aggregate_stats FROM backtests ORDER BY run_date DESC LIMIT 10")
             results = []
             for row in cursor.fetchall():
+                val = row["aggregate_stats"]
                 results.append({
-                    "id": row["id"] if not self.is_postgres else row["id"],
+                    "id": row["id"],
                     "run_date": row["run_date"],
                     "symbols": row["symbols"],
-                    "aggregate_stats": json.loads(row["aggregate_stats"] if row["aggregate_stats"] else "{}")
+                    "aggregate_stats": val if isinstance(val, dict) else json.loads(val or "{}")
                 })
             return results
 
@@ -203,10 +214,12 @@ class RecommendationDB:
             cursor.execute(f"SELECT * FROM backtests WHERE id = {p}", (backtest_id,))
             row = cursor.fetchone()
             if row:
+                as_val = row["aggregate_stats"]
+                rj_val = row["results_json"]
                 return {
                     "id": row["id"], "run_date": row["run_date"], "symbols": row["symbols"],
-                    "aggregate_stats": json.loads(row["aggregate_stats"] if row["aggregate_stats"] else "{}"),
-                    "results_json": json.loads(row["results_json"] if row["results_json"] else "{}")
+                    "aggregate_stats": as_val if isinstance(as_val, dict) else json.loads(as_val or "{}"),
+                    "results_json": rj_val if isinstance(rj_val, dict) else json.loads(rj_val or "{}")
                 }
             return None
 
@@ -235,13 +248,40 @@ class RecommendationDB:
         with self.get_connection() as conn:
             cursor = conn.cursor(cursor_factory=RealDictCursor) if self.is_postgres else conn.cursor()
             if not self.is_postgres: conn.row_factory = sqlite3.Row
-            cursor.execute("SELECT * FROM news_intelligence WHERE expires_at > CURRENT_TIMESTAMP ORDER BY run_date DESC LIMIT 1")
+            cursor.execute("SELECT * FROM news_intelligence ORDER BY run_date DESC LIMIT 1")
             row = cursor.fetchone()
+            print(f"📂 [DB NEWS] Row found: {row is not None}")
             if row:
+                val = row["data_json"]
                 return {
                     "id": row["id"],
                     "run_date": row["run_date"],
-                    "data": json.loads(row["data_json"] if row["data_json"] else "{}"),
+                    "data": val if isinstance(val, dict) else json.loads(val or "{}"),
                     "expires_at": row["expires_at"]
+                }
+            return None
+
+    def save_discovery_results(self, data: list):
+        p = self._get_placeholder()
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                f"INSERT INTO discovery_results (data_json) VALUES ({p})",
+                (json.dumps(data),)
+            )
+            if not self.is_postgres: conn.commit()
+
+    def get_latest_discovery_results(self) -> Optional[Dict]:
+        with self.get_connection() as conn:
+            cursor = conn.cursor(cursor_factory=RealDictCursor) if self.is_postgres else conn.cursor()
+            if not self.is_postgres: conn.row_factory = sqlite3.Row
+            cursor.execute("SELECT * FROM discovery_results ORDER BY run_date DESC LIMIT 1")
+            row = cursor.fetchone()
+            if row:
+                val = row["data_json"]
+                return {
+                    "id": row["id"],
+                    "run_date": row["run_date"],
+                    "data": val if isinstance(val, list) else json.loads(val or "[]")
                 }
             return None

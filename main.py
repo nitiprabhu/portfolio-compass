@@ -20,7 +20,10 @@ if os.path.exists(".env"):
                 os.environ.setdefault(_k, _v)
 
 from recommendation_engine import RecommendationEngine
-from database import RealDictCursor
+try:
+    from psycopg2.extras import RealDictCursor
+except ImportError:
+    RealDictCursor = None
 from weekly_backtest import run_backtest_job
 from scanner import MarketScanner
 from intelligence import NewsIntelligence
@@ -90,6 +93,7 @@ async def get_news_intelligence(force_refresh: bool = False):
     if not force_refresh:
         latest = engine.db.get_latest_news_intelligence()
         if latest:
+            # Sync global state for other components
             news_results = {
                 "status": "completed", 
                 "data": latest["data"], 
@@ -199,7 +203,18 @@ def get_cost_analysis():
         return {"status": "success", "summary": {"total_cost": stats[0] if not engine.db.is_postgres else stats['total_cost'] or 0, "total_calls": stats[1] if not engine.db.is_postgres else stats['total_calls'] or 0}}
 
 @app.get("/api/discover")
-def get_discovery_api(): return discovery_results
+def get_discovery_api():
+    global discovery_results
+    
+    # Try to load from database first
+    latest = engine.db.get_latest_discovery_results()
+    if latest:
+        discovery_results = {
+            "status": "completed", 
+            "data": latest["data"], 
+            "last_run": str(latest["run_date"])
+        }
+    return discovery_results
 
 @app.post("/api/discover/run")
 def trigger_discovery(background_tasks: BackgroundTasks):
@@ -207,6 +222,8 @@ def trigger_discovery(background_tasks: BackgroundTasks):
         global discovery_results
         discovery_results["status"] = "running"
         res = scanner.run_scan()
+        # Persist to database!
+        engine.db.save_discovery_results(res)
         discovery_results = {"status": "completed", "data": res, "last_run": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
     background_tasks.add_task(run_discovery)
     return {"status": "started"}

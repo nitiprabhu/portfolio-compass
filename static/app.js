@@ -479,8 +479,10 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const res = await fetch(`${API_URL}/api/news-intelligence`);
             const data = await res.json();
+            console.log('News Intelligence Data Received:', data);
             if (data.status === 'success' || data.status === 'completed') {
                 const results = data.data;
+                console.log('Rendering News Results:', results);
                 renderNewsIntelligence(results);
                 if (data.cached) {
                     const moodEl = document.getElementById('intel-mood');
