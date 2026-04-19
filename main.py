@@ -191,6 +191,7 @@ def get_discovery_results():
     return discovery_results
 
 def run_discovery_job():
+    global discovery_results
     def update_progress(msg):
         discovery_results["message"] = msg
 
@@ -685,8 +686,10 @@ async def background_daily_analysis():
         
         # ── Sunday Weekly Report & Discovery Scan ─────
         if current_day == 6 and last_sunday_report_date != now.date():
-            # Check if we already have a successful run today in the cache
-            cached_run_date = discovery_results.get("last_run", "").split(" ")[0]
+            # Safely check if we already have a successful run today in the cache
+            last_run = discovery_results.get("last_run")
+            cached_run_date = last_run.split(" ")[0] if last_run else ""
+            
             if cached_run_date == now.strftime("%Y-%m-%d"):
                 print(f"[{now}] Discovery scan already completed today. Skipping.")
                 last_sunday_report_date = now.date()
