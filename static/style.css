@@ -687,26 +687,27 @@ body {
 /* Responsive Media Queries */
 @media (max-width: 1024px) {
     .app-container {
-        flex-direction: column;
+        display: block; /* Disable flex for mobile top-down flow */
         height: auto;
     }
 
     .sidebar {
         position: fixed;
-        left: -260px !important; /* Force off-screen */
+        left: 0;
         top: 0;
         bottom: 0;
         z-index: 1200;
-        transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        transform: translateX(-100%); /* Start completely off-screen */
+        transition: transform 0.3s ease;
         height: 100vh;
-        width: 260px;
+        width: 280px;
         background: #0f172a !important;
         box-shadow: 20px 0 50px rgba(0,0,0,0.5);
         display: flex !important;
     }
 
     .sidebar.active {
-        transform: translateX(260px);
+        transform: translateX(0);
     }
 
     .mobile-header {
@@ -718,9 +719,10 @@ body {
     }
 
     .main-content {
-        padding: 20px !important;
+        padding: 16px !important;
         margin-left: 0 !important;
         width: 100% !important;
+        min-height: calc(100vh - 65px);
     }
 
     .top-header {
