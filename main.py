@@ -609,6 +609,13 @@ async def background_daily_analysis():
         
         # ── Sunday Weekly Report & Discovery Scan ─────
         if current_day == 6 and last_sunday_report_date != now.date():
+            # Check if we already have a successful run today in the cache
+            cached_run_date = discovery_results.get("last_run", "").split(" ")[0]
+            if cached_run_date == now.strftime("%Y-%m-%d"):
+                print(f"[{now}] Discovery scan already completed today. Skipping.")
+                last_sunday_report_date = now.date()
+                continue
+
             print(f"[{now}] Processing Weekly Sunday Status...")
             send_weekly_status()
             
