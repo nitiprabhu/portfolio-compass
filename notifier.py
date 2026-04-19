@@ -62,12 +62,17 @@ def send_bulk_discovery_alert(findings: list):
         conf = rec['conviction']
         signal = rec['recommendation']
         
-        summary += f"{emoji} *{symbol}*: {signal} ({conf}% Confidence)\n"
-        # Extract a tiny snippet of reasoning
-        reason = rec.get('reasoning', '')[:100].strip()
-        summary += f"_{reason}..._\n\n"
+        # Calculate Potential Upside
+        entry = rec.get('entry_price', 0)
+        target = rec.get('target_price', 0)
+        upside_str = ""
+        if entry > 0 and target > 0:
+            upside = ((target - entry) / entry) * 100
+            upside_str = f" | 📈 *+{upside:.1f}% Upside*"
 
-    summary += "🔗 [Open Dashboard](https://portfolio-compass-k4aw.onrender.com)"
+        summary += f"{emoji} *{symbol}*: {signal} ({conf}% Conf){upside_str}\n"
+
+    summary += "\n🔗 [Open Dashboard](https://portfolio-compass-k4aw.onrender.com)"
 
     url = f"https://api.telegram.org/bot{token}/sendMessage"
     payload = {
