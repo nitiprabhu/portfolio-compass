@@ -184,6 +184,40 @@ document.addEventListener('DOMContentLoaded', () => {
                 pnlEl.textContent = `${pnl > 0 ? '+' : ''}${pnl.toFixed(2)}%`;
                 pnlEl.style.color = pnl >= 0 ? "var(--success)" : "var(--danger)";
 
+                // --- Generate Heatmap ---
+                const heatmap = document.getElementById('portfolio-heatmap');
+                if (heatmap) {
+                    heatmap.innerHTML = '';
+                    data.data.forEach(item => {
+                        const tile = document.createElement('div');
+                        const pnlVal = item.pnl_pct || 0;
+                        let bgColor = 'rgba(148, 163, 184, 0.1)';
+                        if (pnlVal > 3) bgColor = 'rgba(16, 185, 129, 0.8)';
+                        else if (pnlVal > 0) bgColor = 'rgba(16, 185, 129, 0.3)';
+                        else if (pnlVal < -3) bgColor = 'rgba(239, 68, 68, 0.8)';
+                        else if (pnlVal < 0) bgColor = 'rgba(239, 68, 68, 0.3)';
+
+                        tile.style.cssText = `
+                            flex: 1;
+                            min-width: 70px;
+                            height: 42px;
+                            background: ${bgColor};
+                            border-radius: 8px;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            font-size: 11px;
+                            font-weight: 700;
+                            border: 1px solid rgba(255,255,255,0.05);
+                            transition: transform 0.2s;
+                            cursor: pointer;
+                        `;
+                        tile.textContent = item.symbol;
+                        tile.title = `${item.symbol}: ${pnlVal.toFixed(2)}%`;
+                        heatmap.appendChild(tile);
+                    });
+                }
+
                 data.data.forEach(item => {
                     const tr = document.createElement('tr');
                     tr.innerHTML = `<td><strong>${item.symbol}</strong></td><td>$${item.entry.toFixed(2)}</td><td>$${item.live_price.toFixed(2)}</td><td style="color:${item.pnl_pct >= 0 ? 'var(--success)' : 'var(--danger)'};font-weight:bold;">${item.pnl_pct.toFixed(2)}%</td><td><span class="badge hold">${item.verdict}</span></td><td><span style="font-size:11px;color:var(--text-muted);">${item.alert}</span></td><td>${item.tech_score}</td><td><div class="sparkline-placeholder"></div></td>`;
@@ -445,8 +479,13 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const res = await fetch(`${API_URL}/api/news-intelligence`);
             const data = await res.json();
-            if (data.status === 'completed' && data.data) {
-                renderNewsIntelligence(data.data);
+            if (data.status === 'success' || data.status === 'completed') {
+                const results = data.data;
+                renderNewsIntelligence(results);
+                if (data.cached) {
+                    const moodEl = document.getElementById('intel-mood');
+                    if (moodEl) moodEl.innerHTML += ' <span style="font-size: 12px; opacity: 0.6;">(Cached)</span>';
+                }
             } else if (data.status === 'running') {
                 intelStatus?.classList.remove('hidden');
                 intelEmpty?.classList.add('hidden');

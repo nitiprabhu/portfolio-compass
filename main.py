@@ -29,18 +29,30 @@ from contextlib import asynccontextmanager
 scanner = MarketScanner()
 news_intel = NewsIntelligence()
 discovery_results = {"status": "idle", "data": [], "last_run": None}
-news_results = {"status": "idle", "data": {}, "history": [], "last_run": None}
+
+# Intelligent News Cache (Cache for 1 hour to save API costs)
+news_results = {
+    "status": "idle", 
+    "data": {}, 
+    "history": [], 
+    "last_run": None,
+    "expires_at": None
+}
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: Create background task for daily analysis
-    task = asyncio.create_task(background_daily_analysis())
+    # Startup: Create background tasks
+    daily_task = asyncio.create_task(background_daily_analysis())
+    monitor_task = asyncio.create_task(monitor_watchlist_prices())
+    
     yield
-    # Shutdown: Any cleanup if needed
-    task.cancel()
+    
+    # Shutdown: Clean up tasks
+    daily_task.cancel()
+    monitor_task.cancel()
     try:
-        await task
-    except asyncio.CancelledError:
+        await asyncio.gather(daily_task, monitor_task, return_exceptions=True)
+    except:
         pass
 
 app = FastAPI(title="Portfolio Compass API", lifespan=lifespan)
@@ -74,6 +86,17 @@ with sqlite3.connect(engine.db_path) as conn:
         conn.execute("ALTER TABLE recommendations ADD COLUMN reflection TEXT")
     except:
         pass
+        
+    # --- New: Watchlist Alert Persistence ---
+    try:
+        conn.execute("ALTER TABLE watchlist ADD COLUMN last_alert_type TEXT")
+    except: pass
+    try:
+        conn.execute("ALTER TABLE watchlist ADD COLUMN last_price REAL")
+    except: pass
+    try:
+        conn.execute("ALTER TABLE watchlist ADD COLUMN last_alert_at TEXT")
+    except: pass
 
 
 class AnalysisRequest(BaseModel):
@@ -239,9 +262,83 @@ def start_discovery_scan(background_tasks: BackgroundTasks):
     return {"status": "started", "message": "Market discovery scan initiated in background"}
 
 
+async def monitor_watchlist_prices():
+    """Periodically checks current prices for symbols in the watchlist and sends alerts if entry zones are hit."""
+    print("🚀 Initializing Watchlist Price Monitor...")
+    while True:
+        try:
+            with sqlite3.connect(engine.db_path) as conn:
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
+                cursor.execute("SELECT * FROM watchlist")
+                watched_items = cursor.fetchall()
+
+            if watched_items:
+                for item in watched_items:
+                    symbol = item['symbol']
+                    last_alert = item['last_alert_type']
+                    
+                    # Fetch current price
+                    ticker = yf.Ticker(symbol)
+                    hist = ticker.history(period="1d")
+                    if hist.empty: continue
+                    live_price = hist['Close'].iloc[-1]
+                    
+                    # Get recent recommendation for levels
+                    with sqlite3.connect(engine.db_path) as conn:
+                        cursor = conn.cursor()
+                        cursor.execute("SELECT recommendation, entry_price, target_price FROM recommendations WHERE symbol = ? ORDER BY created_at DESC LIMIT 1", (symbol,))
+                        row = cursor.fetchone()
+                        if not row: continue
+                        rec, entry, target = row
+
+                        # --- ALERT LOGIC ---
+                        msg = None
+                        alert_type = None
+                        
+                        # 1. ENTRY ALERT: If price falls to or below entry price (within 1%)
+                        if rec == "BUY" and last_alert != "ENTRY" and live_price <= (entry * 1.01):
+                            msg = f"🔔 <b>ENTRY ALERT: {symbol}</b>\nPrice hit entry zone: <b>${live_price:.2f}</b> (Target Entry: ${entry:.2f})\nPotential established for 10x breakout."
+                            alert_type = "ENTRY"
+                        
+                        # 2. TARGET ALERT: If price hits target
+                        elif last_alert != "TARGET" and target > 0 and live_price >= target:
+                            msg = f"🚀 <b>TARGET HIT: {symbol}</b>\nPrice reached AI target: <b>${live_price:.2f}</b>\nTime to secure profits or move stops."
+                            alert_type = "TARGET"
+
+                        if msg:
+                            send_telegram_alert(msg)
+                            cursor.execute(
+                                "UPDATE watchlist SET last_alert_type = ?, last_price = ?, last_alert_at = ? WHERE symbol = ?",
+                                (alert_type, live_price, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), symbol)
+                            )
+                            conn.commit()
+            
+            # Check every 10 minutes during market sessions
+            await asyncio.sleep(600) 
+        except Exception as e:
+            print(f"Watchlist monitor error: {e}")
+            await asyncio.sleep(60)
+
 @app.get("/api/news-intelligence")
-def get_news_intelligence():
-    return news_results
+async def get_news_intelligence(force_refresh: bool = False):
+    global news_results
+    
+    # Return cached results if fresh (1 hour)
+    if not force_refresh and news_results["expires_at"] and datetime.now() < news_results["expires_at"]:
+        return {"status": "success", "data": news_results["data"], "cached": True}
+
+    try:
+        results = await asyncio.to_thread(news_intel.run_daily_scan)
+        news_results = {
+            "status": "completed",
+            "data": results,
+            "last_run": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "expires_at": datetime.now() + timedelta(hours=1)
+        }
+        return {"status": "success", "data": results, "cached": False}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
 
 def update_news_cache(results):
     """Helper to update global results and history, then persist to disk"""
@@ -679,6 +776,7 @@ async def background_daily_analysis():
     """Runs automatically once per day to update analysis and handle reports"""
     last_sunday_report_date = None
     last_daily_analysis_date = None
+    last_premarket_date = None
     
     while True:
         now = datetime.now()
@@ -718,12 +816,36 @@ async def background_daily_analysis():
                     news_results = {
                         "status": "completed",
                         "data": results,
-                        "last_run": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        "last_run": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        "expires_at": datetime.now() + timedelta(hours=1)
                     }
                     market_mood = results.get("market_mood")
                     
                     if "summary_for_telegram" in results:
                         send_telegram_alert(results["summary_for_telegram"])
+                        
+                    with open("news_cache.json", "w") as f:
+                        json.dump(news_results, f)
+                except Exception as e:
+                    print(f"News automation error: {e}")
+                    market_mood = "Neutral"
+
+                # ── Stock Deep-Dive Analysis ─────
+                for symbol in symbols_to_track:
+                    print(f"Analyzing {symbol}...")
+                    engine.analyze_stock(symbol, bypass_cache=True, save_to_db=True, market_mood=market_mood)
+                    await asyncio.sleep(2)
+                
+                last_daily_analysis_date = now.date()
+                print(f"[{now}] Automated Daily Analysis Complete.")
+            except Exception as e:
+                print(f"ERROR in daily automation: {e}")
+
+        # ── PRE-MARKET GAP SCAN (Monday–Friday at ~19:00 IST / 09:30 ET) ─────
+        if current_day < 5 and now.hour >= 19 and last_premarket_date != now.date():
+            print(f"[{now}] Executing Automated Pre-Market Gap Scan...")
+            asyncio.create_task(asyncio.to_thread(scanner.run_premarket_scan))
+            last_premarket_date = now.date()
                         
                     with open("news_cache.json", "w") as f:
                         json.dump(news_results, f)

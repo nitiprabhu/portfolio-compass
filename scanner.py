@@ -141,6 +141,65 @@ class MarketScanner:
             
         return findings
 
+    def run_premarket_scan(self, progress_callback=None):
+        """Specialized scan for high-momentum 'gappers' (>3% pre-market gap)."""
+        def update_status(msg):
+            print(f"[Pre-Market Scanner] {msg}")
+            if progress_callback: progress_callback(msg)
+
+        update_status("Starting Pre-Market Gap Discovery...")
+        
+        # 1. Fetch S&P 600 Candidates
+        sp600_tickers = self.get_sp600_leaders()
+        
+        # 2. Bulk Fetch Current OHLC for Gap Analysis
+        update_status(f"Analysing gap potential for {len(sp600_tickers)} leaders...")
+        momentum_data = yf.download(sp600_tickers, period="2d", interval="1d", group_by='ticker', threads=True)
+        
+        gappers = []
+        for ticker in sp600_tickers:
+            try:
+                hist = momentum_data[ticker]
+                if len(hist) < 2: continue
+                
+                prev_close = hist['Close'].iloc[-2]
+                current_open = hist['Open'].iloc[-1]
+                
+                # Calculate Gap %
+                gap_pct = ((current_open - prev_close) / prev_close) * 100
+                
+                if gap_pct >= 3.0: # Significant gap
+                    gappers.append({
+                        "symbol": ticker,
+                        "gap": gap_pct,
+                        "volume_surge": hist['Volume'].iloc[-1] / hist['Volume'].iloc[-2] if hist['Volume'].iloc[-2] > 0 else 1
+                    })
+            except: continue
+
+        # 3. Sort by Gap Size & Volume Surge
+        gappers.sort(key=lambda x: (x['gap'] * 0.7 + x['volume_surge'] * 0.3), reverse=True)
+        top_gappers = gappers[:8] 
+
+        if not top_gappers:
+            update_status("No significant pre-market gaps found today.")
+            return []
+
+        # 4. AI Deep-Dive & Alerts
+        findings = []
+        update_status(f"AI Deep-Dive for {len(top_gappers)} top gappers...")
+        for pick in top_gappers:
+            symbol = pick['symbol']
+            update_status(f"  Analysing Gapper: {symbol} (+{pick['gap']:.1f}% Gap)...")
+            rec = self.engine.analyze_stock(symbol, bypass_cache=True, save_to_db=False)
+            if rec:
+                findings.append(rec)
+            time.sleep(1)
+
+        if findings:
+            send_bulk_discovery_alert(findings)
+            
+        return findings
+
 if __name__ == "__main__":
     scanner = MarketScanner()
     results = scanner.run_scan()
