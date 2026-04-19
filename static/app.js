@@ -25,8 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 'view-backtest': 'Proof of History',
                 'view-discovery': 'Market Discovery',
                 'view-watchlist': 'Model Watchlist',
-                'view-costs': 'Cost Analysis',
-                'view-research': 'Research Assistant'
+                'view-costs': 'Cost Analysis'
             };
             if (viewNames[viewId]) headerTitle.textContent = viewNames[viewId];
         }
@@ -361,67 +360,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (e) { console.error(e); }
     }
-
-    // --- Research Assistant Logic ---
-    const runResearchBtn = document.getElementById('run-research-btn');
-    const researchSymbol = document.getElementById('research-symbol');
-    const researchQuestion = document.getElementById('research-question');
-    const researchStatus = document.getElementById('research-status');
-    const researchResponse = document.getElementById('research-response');
-
-    runResearchBtn?.addEventListener('click', async () => {
-        const symbol = researchSymbol?.value.trim().toUpperCase();
-        const question = researchQuestion?.value.trim();
-        
-        if (!symbol || !question) {
-            alert("Please enter both a symbol and a research question.");
-            return;
-        }
-
-        try {
-            runResearchBtn.disabled = true;
-            runResearchBtn.innerHTML = '<div class="spinner" style="width:14px;height:14px;border-width:2px;margin-bottom:0;"></div> Researching...';
-            researchStatus.style.display = 'block';
-            researchResponse.style.display = 'none';
-
-            const res = await fetch(`${API_URL}/api/research`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ symbol, question })
-            });
-            const data = await res.json();
-            
-            researchStatus.style.display = 'none';
-            researchResponse.style.display = 'block';
-
-            if (data.status === 'success') {
-                // Simple Markdown-ish to HTML for the assistant
-                const html = data.answer
-                    .replace(/^# (.*$)/gim, '<h1 style="color:var(--primary);margin-top:20px;">$1</h1>')
-                    .replace(/^## (.*$)/gim, '<h2 style="color:var(--primary);margin-top:15px;border-bottom:1px solid rgba(255,255,255,0.05);padding-bottom:5px;">$1</h2>')
-                    .replace(/^### (.*$)/gim, '<h3 style="color:var(--text-main);margin-top:12px;">$1</h3>')
-                    .replace(/^\- (.*$)/gim, '<li style="margin-left:20px;margin-bottom:8px;list-style:disc;">$1</li>')
-                    .replace(/\*\*(.*?)\*\*/g, '<strong style="color:var(--text-main)">$1</strong>')
-                    .replace(/\n\n/g, '<br><br>');
-                
-                researchResponse.innerHTML = html;
-            } else {
-                researchResponse.innerHTML = `<div style="color:var(--danger)"><strong>Error:</strong> ${data.message}</div>`;
-            }
-        } catch (e) { 
-            console.error(e);
-            researchResponse.innerHTML = `<div style="color:var(--danger)"><strong>System Error:</strong> Failed to connect to Research API.</div>`;
-        } finally {
-            runResearchBtn.disabled = false;
-            runResearchBtn.innerHTML = '<i data-lucide="search"></i> Run Deep Research';
-            if (window.lucide) window.lucide.createIcons();
-        }
-    });
-
-    // Support Enter Key
-    researchQuestion?.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') runResearchBtn?.click();
-    });
 
     showView('view-dashboard');
     fetchStats();

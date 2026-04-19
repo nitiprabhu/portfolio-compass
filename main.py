@@ -22,13 +22,10 @@ if os.path.exists(".env"):
 from recommendation_engine import RecommendationEngine
 from weekly_backtest import run_backtest_job
 from scanner import MarketScanner
-from researcher import StockResearcher
-
 from contextlib import asynccontextmanager
 
-# Global Discovery Cache & Researcher
+# Global Discovery Cache
 scanner = MarketScanner()
-researcher = StockResearcher()
 discovery_results = {"status": "idle", "data": [], "last_run": None}
 
 @asynccontextmanager
@@ -232,17 +229,6 @@ def start_discovery_scan(background_tasks: BackgroundTasks):
     background_tasks.add_task(run_discovery_job)
     return {"status": "started", "message": "Market discovery scan initiated in background"}
 
-class ResearchRequest(BaseModel):
-    symbol: str
-    question: str
-
-@app.post("/api/research")
-def conduct_research(req: ResearchRequest):
-    try:
-        result = researcher.deep_research(req.symbol, req.question)
-        return result
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
 
 @app.get("/api/portfolio")
 def get_portfolio():
