@@ -13,7 +13,7 @@ class DailyBacktestEngine(RecommendationEngine):
     def set_date(self, date_str):
         self.current_date = date_str
 
-    def _get_technicals(self, symbol: str) -> dict:
+    def _get_technicals(self, symbol: str, sector: str = "Unknown", **kwargs) -> dict:
         try:
             ticker = yf.Ticker(symbol)
             # Fetch data up to the simulated current date

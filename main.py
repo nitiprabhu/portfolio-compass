@@ -22,11 +22,14 @@ if os.path.exists(".env"):
 from recommendation_engine import RecommendationEngine
 from weekly_backtest import run_backtest_job
 from scanner import MarketScanner
+from intelligence import NewsIntelligence
 from contextlib import asynccontextmanager
 
 # Global Discovery Cache
 scanner = MarketScanner()
+news_intel = NewsIntelligence()
 discovery_results = {"status": "idle", "data": [], "last_run": None}
+news_results = {"status": "idle", "data": {}, "history": [], "last_run": None}
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -99,7 +102,9 @@ def get_all_recommendations():
 @app.post("/api/analyze")
 def trigger_analysis(req: AnalysisRequest, background_tasks: BackgroundTasks):
     def run_analysis(symbols):
-        engine.batch_analyze(symbols)
+        mood = news_results.get("data", {}).get("market_mood")
+        history = news_results.get("history", [])
+        engine.batch_analyze(symbols, market_mood=mood, mood_history=history)
         
         # ── Send a quick Telegram summary after manual trigger ──
         try:
@@ -228,6 +233,73 @@ if os.path.exists("discovery_cache.json"):
 def start_discovery_scan(background_tasks: BackgroundTasks):
     background_tasks.add_task(run_discovery_job)
     return {"status": "started", "message": "Market discovery scan initiated in background"}
+
+
+@app.get("/api/news-intelligence")
+def get_news_intelligence():
+    return news_results
+
+def update_news_cache(results):
+    """Helper to update global results and history, then persist to disk"""
+    global news_results
+    new_entry = {
+        "date": datetime.now().strftime("%Y-%m-%d"),
+        "mood": results.get("market_mood", "Neutral")
+    }
+    
+    history = news_results.get("history", [])
+    if not isinstance(history, list): history = []
+    
+    # Avoid duplicate entries for same day
+    history = [h for h in history if h["date"] != new_entry["date"]]
+    history.append(new_entry)
+    history.sort(key=lambda x: x["date"], reverse=True)
+    history = history[:7]
+    
+    news_results["status"] = "completed"
+    news_results["data"] = results
+    news_results["history"] = history
+    news_results["last_run"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    try:
+        with open("news_cache.json", "w") as f:
+            json.dump(news_results, f)
+    except: pass
+
+def run_news_intelligence_job():
+    global news_results
+    try:
+        print("[News Intelligence] Starting analysis job...")
+        news_results["status"] = "running"
+        results = news_intel.run_daily_scan()
+        
+        update_news_cache(results)
+        print(f"[News Intelligence] Analysis complete. Alerts found: {len(results.get('alerts', []))}")
+        
+        # ── Send Telegram Alert ──
+        if "summary_for_telegram" in results:
+            print("[News Intelligence] Sending Telegram alert...")
+            send_telegram_alert(results["summary_for_telegram"])
+            
+    except Exception as e:
+        print(f"[News Intelligence] CRITICAL ERROR: {e}")
+        news_results["status"] = "error"
+        news_results["message"] = str(e)
+        news_results["last_run"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        send_telegram_alert(f"⚠️ News Analysis Failed: {e}")
+
+@app.post("/api/news-intelligence/run")
+def start_news_analysis(background_tasks: BackgroundTasks):
+    background_tasks.add_task(run_news_intelligence_job)
+    return {"status": "started", "message": "Daily news analysis initiated in background"}
+
+# ── Load News Cache on Startup ──
+if os.path.exists("news_cache.json"):
+    try:
+        with open("news_cache.json", "r") as f:
+            news_results = json.load(f)
+    except:
+        pass
 
 
 @app.get("/api/portfolio")
@@ -625,13 +697,37 @@ async def background_daily_analysis():
             
             last_sunday_report_date = now.date()
 
-        # ── Daily Analysis (Monday–Friday) ─────
-        if current_day < 5 and last_daily_analysis_date != now.date():
+        # ── Daily Analysis (Monday–Friday during US Pre-market: ~14:00 IST / 04:30 ET) ─────
+        if current_day < 5 and now.hour >= 14 and last_daily_analysis_date != now.date():
             symbols_to_track = ["AVGO", "GOOGL", "CPER", "URA", "VNT", "CPNG", "SMH", "CNXT", "ARKW", "STEP", "INTC"]
             try:
                 print(f"[{now}] Executing Automated Daily Analysis...")
-                # Full technical analysis for your actual holdings
-                engine.batch_analyze(symbols_to_track)
+                
+                # ── News Intelligence Scan FIRST ─────
+                print(f"[{now}] Processing News Intelligence...")
+                # We await this so we have the mood for the subsequent analysis
+                try:
+                    results = await asyncio.to_thread(news_intel.run_daily_scan)
+                    news_results = {
+                        "status": "completed",
+                        "data": results,
+                        "last_run": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    }
+                    market_mood = results.get("market_mood")
+                    
+                    if "summary_for_telegram" in results:
+                        send_telegram_alert(results["summary_for_telegram"])
+                        
+                    with open("news_cache.json", "w") as f:
+                        json.dump(news_results, f)
+                except Exception as ne:
+                    print(f"News Analysis failed: {ne}")
+                    market_mood = None
+
+                # ── Full Analysis with News Integration ─────
+                mood_history = news_results.get("history", [])
+                engine.batch_analyze(symbols_to_track, market_mood=market_mood, mood_history=mood_history)
+                
                 
                 # Check for BUY Alerts
                 time_threshold = (now - timedelta(minutes=15)).strftime('%Y-%m-%d %H:%M:%S')
