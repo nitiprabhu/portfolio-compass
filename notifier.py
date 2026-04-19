@@ -57,10 +57,13 @@ def send_bulk_discovery_alert(findings: list):
     summary += "AI has identified the following high-potential setups:\n\n"
 
     for rec in findings:
-        emoji = "🚀" if rec['recommendation'] == "BUY" else ("⚖️" if rec['recommendation'] == "HOLD" else "📉")
+        signal = rec.get('recommendation', '').upper()
+        if signal not in ["BUY", "SELL"]:
+            continue
+            
+        emoji = "🚀" if signal == "BUY" else "📉"
         symbol = rec['symbol']
         conf = rec['conviction']
-        signal = rec['recommendation']
         
         # Calculate Potential Upside
         entry = rec.get('entry_price', 0)
@@ -71,6 +74,11 @@ def send_bulk_discovery_alert(findings: list):
             upside_str = f" | 📈 *+{upside:.1f}% Upside*"
 
         summary += f"{emoji} *{symbol}*: {signal} ({conf}% Conf){upside_str}\n"
+
+    # Only send if we actually have filtered findings to report
+    if "\n🚀" not in summary and "\n📉" not in summary:
+        print("  No BUY/SELL signals found in this scan. Skipping Telegram alert.")
+        return
 
     summary += "\n🔗 [Open Dashboard](https://portfolio-compass-k4aw.onrender.com)"
 
