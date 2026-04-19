@@ -20,6 +20,7 @@ if os.path.exists(".env"):
                 os.environ.setdefault(_k, _v)
 
 from recommendation_engine import RecommendationEngine
+from database import RealDictCursor
 from weekly_backtest import run_backtest_job
 from scanner import MarketScanner
 from intelligence import NewsIntelligence
@@ -84,14 +85,30 @@ def trigger_analysis(req: AnalysisRequest, background_tasks: BackgroundTasks):
 @app.get("/api/news-intelligence")
 async def get_news_intelligence(force_refresh: bool = False):
     global news_results
-    if not force_refresh and news_results["expires_at"] and datetime.now() < datetime.fromisoformat(news_results["expires_at"]):
-        return {"status": "success", "data": news_results["data"], "cached": True}
+    
+    # 1. Check database first if not forced
+    if not force_refresh:
+        latest = engine.db.get_latest_news_intelligence()
+        if latest:
+            news_results = {
+                "status": "completed", 
+                "data": latest["data"], 
+                "last_run": str(latest["run_date"]),
+                "expires_at": str(latest["expires_at"])
+            }
+            return {"status": "success", "data": latest["data"], "cached": True}
+
+    # 2. Otherwise run new scan
     try:
         results = await asyncio.to_thread(news_intel.run_daily_scan)
+        
+        # 3. Save to database with 7 day TTL
+        engine.db.save_news_intelligence(results, ttl_days=7)
+        
         news_results = {
             "status": "completed", "data": results, 
             "last_run": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "expires_at": (datetime.now() + timedelta(hours=1)).isoformat()
+            "expires_at": (datetime.now() + timedelta(days=7)).isoformat()
         }
         return {"status": "success", "data": results, "cached": False}
     except Exception as e: return {"status": "error", "message": str(e)}
@@ -221,6 +238,7 @@ async def background_daily_analysis():
             try:
                 # 1. News Intelligence
                 intel = await asyncio.to_thread(news_intel.run_daily_scan)
+                engine.db.save_news_intelligence(intel, ttl_days=7) # Persist!
                 market_mood = intel.get("market_mood", "Neutral")
                 if "summary_for_telegram" in intel: send_telegram_alert(intel["summary_for_telegram"])
                 

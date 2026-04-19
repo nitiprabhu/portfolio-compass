@@ -106,6 +106,16 @@ class RecommendationDB:
                 )
             """)
             
+            # Add news_intelligence table
+            cursor.execute(f"""
+                CREATE TABLE IF NOT EXISTS news_intelligence (
+                    id {pk_type},
+                    run_date TIMESTAMP DEFAULT {timestamp_default},
+                    data_json {json_type},
+                    expires_at TIMESTAMP
+                )
+            """)
+            
             if not self.is_postgres:
                 conn.commit()
 
@@ -208,3 +218,30 @@ class RecommendationDB:
             cursor.execute(f"SELECT * FROM recommendations WHERE symbol = {p} ORDER BY created_at DESC LIMIT 1", (symbol,))
             row = cursor.fetchone()
             return dict(row) if row else None
+
+    def save_news_intelligence(self, data: dict, ttl_days: int = 7):
+        import datetime
+        p = self._get_placeholder()
+        expires_at = (datetime.datetime.now() + datetime.timedelta(days=ttl_days)).strftime('%Y-%m-%d %H:%M:%S')
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                f"INSERT INTO news_intelligence (data_json, expires_at) VALUES ({p}, {p})",
+                (json.dumps(data), expires_at)
+            )
+            if not self.is_postgres: conn.commit()
+
+    def get_latest_news_intelligence(self) -> Optional[Dict]:
+        with self.get_connection() as conn:
+            cursor = conn.cursor(cursor_factory=RealDictCursor) if self.is_postgres else conn.cursor()
+            if not self.is_postgres: conn.row_factory = sqlite3.Row
+            cursor.execute("SELECT * FROM news_intelligence WHERE expires_at > CURRENT_TIMESTAMP ORDER BY run_date DESC LIMIT 1")
+            row = cursor.fetchone()
+            if row:
+                return {
+                    "id": row["id"],
+                    "run_date": row["run_date"],
+                    "data": json.loads(row["data_json"] if row["data_json"] else "{}"),
+                    "expires_at": row["expires_at"]
+                }
+            return None
