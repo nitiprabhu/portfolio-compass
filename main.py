@@ -162,14 +162,40 @@ def get_cost_analysis():
 def get_discovery_api(): return discovery_results
 
 @app.post("/api/discover/run")
-def trigger_discovery(background_tasks: BackgroundTasks):
-    def run_discovery():
-        global discovery_results
-        discovery_results["status"] = "running"
-        res = scanner.run_scan()
-        discovery_results = {"status": "completed", "data": res, "last_run": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
-    background_tasks.add_task(run_discovery)
-    return {"status": "started"}
+def start_discovery_scan(background_tasks: BackgroundTasks):
+    background_tasks.add_task(run_discovery_job)
+    return {"status": "started", "message": "Market discovery scan initiated in background"}
+
+# ── Render Free Tier Cron Triggers ─────
+# Use these with an external service like Cron-job.org to wake up the server
+@app.get("/api/cron/daily")
+def trigger_daily_cron(background_tasks: BackgroundTasks):
+    """External trigger for 14:00 IST Analysis"""
+    print("⏰ External Daily Cron Triggered!")
+    symbols = ["AVGO", "GOOGL", "CPER", "URA", "VNT", "CPNG", "SMH", "CNXT", "ARKW", "STEP", "INTC"]
+    
+    async def run_sync():
+        intel = await asyncio.to_thread(news_intel.run_daily_scan)
+        mood = intel.get("market_mood", "Neutral")
+        if "summary_for_telegram" in intel: send_telegram_alert(intel["summary_for_telegram"])
+        for s in symbols:
+            engine.analyze_stock(s, bypass_cache=True, save_to_db=True, market_mood=mood)
+    
+    background_tasks.add_task(run_sync)
+    return {"status": "triggered", "task": "daily_analysis"}
+
+@app.get("/api/cron/premarket")
+def trigger_premarket_cron(background_tasks: BackgroundTasks):
+    """External trigger for 19:00 IST Gap Scan"""
+    print("⏰ External Pre-market Cron Triggered!")
+    background_tasks.add_task(asyncio.to_thread, scanner.run_premarket_scan)
+    return {"status": "triggered", "task": "premarket_gap_scan"}
+
+def run_discovery_job():
+    global discovery_results
+    discovery_results["status"] = "running"
+    res = scanner.run_scan()
+    discovery_results = {"status": "completed", "data": res, "last_run": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 
 def send_telegram_alert(message: str):
     token = os.environ.get("TELEGRAM_BOT_TOKEN")
