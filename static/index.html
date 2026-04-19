@@ -6,7 +6,7 @@
     <title>Portfolio Compass</title>
     <meta name="description" content="AI-Powered Stock Recommendations for Busy Professionals">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=3">
+    <link rel="stylesheet" href="style.css?v=4">
     <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
@@ -181,12 +181,12 @@
 
             <div id="view-portfolio" class="hidden">
                 <div class="section-container glass-panel">
-                    <div class="section-header" style="justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255, 255, 255, 0.1); padding-bottom: 20px;">
+                    <div class="section-header portfolio-header">
                         <div>
                             <h2>Live Positions</h2>
                             <p class="subtitle">Real-time tracking of active recommendations</p>
                         </div>
-                        <div class="portfolio-stats" style="display: flex; gap: 30px;">
+                        <div class="portfolio-stats">
                             <div class="p-stat">
                                 <span class="stat-label" style="color: var(--text-muted); font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Total Value</span>
                                 <div class="stat-val" id="port-value" style="font-size: 24px; font-weight: 700; color: var(--text-main);">$0.00</div>
@@ -207,7 +207,7 @@
                         <p>Syncing portfolio...</p>
                     </div>
 
-                    <div class="table-responsive" style="margin-top: 20px;">
+                    <div class="table-container portfolio-container">
                         <table class="data-table portfolio-table">
                             <thead>
                                 <tr>
