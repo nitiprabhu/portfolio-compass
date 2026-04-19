@@ -43,16 +43,14 @@ news_results = {
 async def lifespan(app: FastAPI):
     # Startup: Create background tasks
     daily_task = asyncio.create_task(background_daily_analysis())
-    monitor_task = asyncio.create_task(monitor_watchlist_prices())
     
     yield
     
     # Shutdown: Clean up tasks
     daily_task.cancel()
-    monitor_task.cancel()
     try:
-        await asyncio.gather(daily_task, monitor_task, return_exceptions=True)
-    except:
+        await daily_task
+    except asyncio.CancelledError:
         pass
 
 app = FastAPI(title="Portfolio Compass API", lifespan=lifespan)
@@ -262,63 +260,6 @@ def start_discovery_scan(background_tasks: BackgroundTasks):
     return {"status": "started", "message": "Market discovery scan initiated in background"}
 
 
-async def monitor_watchlist_prices():
-    """Periodically checks current prices for symbols in the watchlist and sends alerts if entry zones are hit."""
-    print("🚀 Initializing Watchlist Price Monitor...")
-    while True:
-        try:
-            with sqlite3.connect(engine.db_path) as conn:
-                conn.row_factory = sqlite3.Row
-                cursor = conn.cursor()
-                cursor.execute("SELECT * FROM watchlist")
-                watched_items = cursor.fetchall()
-
-            if watched_items:
-                for item in watched_items:
-                    symbol = item['symbol']
-                    last_alert = item['last_alert_type']
-                    
-                    # Fetch current price
-                    ticker = yf.Ticker(symbol)
-                    hist = ticker.history(period="1d")
-                    if hist.empty: continue
-                    live_price = hist['Close'].iloc[-1]
-                    
-                    # Get recent recommendation for levels
-                    with sqlite3.connect(engine.db_path) as conn:
-                        cursor = conn.cursor()
-                        cursor.execute("SELECT recommendation, entry_price, target_price FROM recommendations WHERE symbol = ? ORDER BY created_at DESC LIMIT 1", (symbol,))
-                        row = cursor.fetchone()
-                        if not row: continue
-                        rec, entry, target = row
-
-                        # --- ALERT LOGIC ---
-                        msg = None
-                        alert_type = None
-                        
-                        # 1. ENTRY ALERT: If price falls to or below entry price (within 1%)
-                        if rec == "BUY" and last_alert != "ENTRY" and live_price <= (entry * 1.01):
-                            msg = f"🔔 <b>ENTRY ALERT: {symbol}</b>\nPrice hit entry zone: <b>${live_price:.2f}</b> (Target Entry: ${entry:.2f})\nPotential established for 10x breakout."
-                            alert_type = "ENTRY"
-                        
-                        # 2. TARGET ALERT: If price hits target
-                        elif last_alert != "TARGET" and target > 0 and live_price >= target:
-                            msg = f"🚀 <b>TARGET HIT: {symbol}</b>\nPrice reached AI target: <b>${live_price:.2f}</b>\nTime to secure profits or move stops."
-                            alert_type = "TARGET"
-
-                        if msg:
-                            send_telegram_alert(msg)
-                            cursor.execute(
-                                "UPDATE watchlist SET last_alert_type = ?, last_price = ?, last_alert_at = ? WHERE symbol = ?",
-                                (alert_type, live_price, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), symbol)
-                            )
-                            conn.commit()
-            
-            # Check every 10 minutes during market sessions
-            await asyncio.sleep(600) 
-        except Exception as e:
-            print(f"Watchlist monitor error: {e}")
-            await asyncio.sleep(60)
 
 @app.get("/api/news-intelligence")
 async def get_news_intelligence(force_refresh: bool = False):
@@ -960,8 +901,9 @@ async def background_daily_analysis():
                         if alert_msgs:
                             send_telegram_alert("\n".join(alert_msgs))
                 
-                # ── Watchlist Paper Trading ─────
+                # ── Watchlist Paper Trading & Hot Zone Detection ─────
                 print(f"[{now}] Processing Watchlist & Paper Trading...")
+                watchlist_alerts = []
                 with sqlite3.connect(engine.db_path) as conn:
                     cursor = conn.cursor()
                     cursor.execute("SELECT symbol FROM watchlist")
@@ -972,33 +914,35 @@ async def background_daily_analysis():
                     if not rec: continue
                     
                     price = rec['entry_price']
+                    target = rec['target_price']
+                    signal = rec['recommendation']
+                    
+                    # Entry Zone Detection (within 2% of entry target)
+                    if signal == "BUY" and price > 0:
+                        # Fetch the absolute latest live price for the alert
+                        t = yf.Ticker(ws)
+                        curr = t.info.get('regularMarketPrice') or price
+                        proximity = ((curr - price) / price) * 100
+                        if abs(proximity) < 2.0:
+                            watchlist_alerts.append(f"🔥 <b>{ws}:</b> Ready for entry (${curr:.2f}). Near target of ${price:.2f}")
+
                     with sqlite3.connect(engine.db_path) as conn:
                         cursor = conn.cursor()
+                        # ... Paper trading logic remains same ...
                         cursor.execute("SELECT id, quantity FROM paper_trades WHERE symbol = ? AND status = 'OPEN'", (ws,))
                         active_trade = cursor.fetchone()
-                        
-                        if rec['recommendation'] == 'BUY':
+                        if signal == 'BUY':
                             if not active_trade:
-                                # Start new paper trade with $100
                                 qty = 100.0 / price
-                                cursor.execute("""
-                                    INSERT INTO paper_trades (symbol, quantity, entry_price, current_price, total_investment, current_value, status)
-                                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                                """, (ws, qty, price, price, 100.0, 100.0, 'OPEN'))
-                                print(f"  PAPER BUY: {ws} at ${price} ($100 lot)")
-                        
-                        elif rec['recommendation'] == 'SELL' and active_trade:
-                            # Close position
-                            cursor.execute("""
-                                UPDATE paper_trades 
-                                SET status = 'CLOSED', closed_at = CURRENT_TIMESTAMP, current_price = ?
-                                WHERE id = ?
-                            """, (price, active_trade[0]))
-                            print(f"  PAPER SELL: {ws} at ${price}")
-                        
-                        # Update current price for all open watchlist positions
+                                cursor.execute("INSERT INTO paper_trades (symbol, quantity, entry_price, current_price, total_investment, current_value, status) VALUES (?, ?, ?, ?, ?, ?, ?)", (ws, qty, price, price, 100.0, 100.0, 'OPEN'))
+                        elif signal == 'SELL' and active_trade:
+                            cursor.execute("UPDATE paper_trades SET status = 'CLOSED', closed_at = CURRENT_TIMESTAMP, current_price = ? WHERE id = ?", (price, active_trade[0]))
                         cursor.execute("UPDATE paper_trades SET current_price = ?, current_value = quantity * ? WHERE symbol = ? AND status = 'OPEN'", (price, price, ws))
-                    
+                        conn.commit()
+                
+                if watchlist_alerts:
+                    send_telegram_alert("⭐ <b>DAILY WATCHLIST HOT ZONE</b>\n" + "\n".join(watchlist_alerts))
+                
                 sector_warning = check_sector_concentration()
                 if sector_warning:
                     send_telegram_alert(sector_warning)
