@@ -614,7 +614,7 @@ async def background_daily_analysis():
             
             # Also run the expensive Discovery Scan automatically on Sundays
             print(f"[{now}] Starting Automated Market Discovery Scan...")
-            run_discovery_job()
+            asyncio.create_task(asyncio.to_thread(run_discovery_job))
             
             last_sunday_report_date = now.date()
 
