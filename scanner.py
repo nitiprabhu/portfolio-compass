@@ -5,7 +5,7 @@ from bs4 import BeautifulSoup
 from recommendation_engine import RecommendationEngine
 import time
 from datetime import datetime
-from notifier import send_telegram_alert
+from notifier import send_telegram_alert, send_bulk_discovery_alert
 
 class MarketScanner:
     def __init__(self):
@@ -132,16 +132,12 @@ class MarketScanner:
             rec = self.engine.analyze_stock(symbol, bypass_cache=True, save_to_db=False)
             if rec:
                 findings.append(rec)
-                # TELEGRAM NOTIFICATION
-                print(f"  Sending Telegram Alert for {symbol}...")
-                send_telegram_alert(
-                    symbol=rec['symbol'],
-                    recommendation=rec['recommendation'],
-                    conviction=rec['conviction'],
-                    reasoning=rec['reasoning'],
-                    price=rec.get('entry_price')
-                )
             time.sleep(1) # Rate limit safety
+            
+        # 5. CUMULATIVE TELEGRAM NOTIFICATION
+        if findings:
+            update_status(f"Scan complete. Sending cumulative alert for {len(findings)} candidates...")
+            send_bulk_discovery_alert(findings)
             
         return findings
 
