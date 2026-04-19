@@ -1,5 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     const API_URL = '';
+    console.log('Portfolio Compass App Initialized');
     
     // UI Utility: Clean Markdown from LLM reasoning
     const cleanMD = (text) => {
@@ -9,7 +10,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function showView(viewId) {
         document.querySelectorAll('[id^="view-"]').forEach(v => v.classList.add('hidden'));
-        const targetView = document.getElementById(viewId);
+        let targetView = document.getElementById(viewId);
+        if (viewId === 'view-recommendations') {
+            targetView = document.getElementById('view-dashboard');
+        }
         if (targetView) targetView.classList.remove('hidden');
         
         document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -21,11 +25,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (headerTitle) {
             const viewNames = {
                 'view-dashboard': 'Dashboard',
+                'view-recommendations': 'Dashboard',
                 'view-portfolio': 'Live Portfolio',
                 'view-backtest': 'Proof of History',
                 'view-discovery': 'Market Discovery',
+                'view-intelligence': 'News Intelligence',
                 'view-watchlist': 'Model Watchlist',
-                'view-costs': 'Cost Analysis'
+                'view-costs': 'Cost Analysis',
+                'view-settings': 'Settings'
             };
             if (viewNames[viewId]) headerTitle.textContent = viewNames[viewId];
         }
@@ -34,6 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
         else if (viewId === 'view-portfolio') fetchPortfolio();
         else if (viewId === 'view-backtest') { fetchPastRuns(); fetchBacktestResults(); }
         else if (viewId === 'view-watchlist') fetchWatchlist();
+        else if (viewId === 'view-intelligence') fetchNewsIntelligence();
         else if (viewId === 'view-costs') fetchCostAnalysis();
     }
 
@@ -80,11 +88,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify({ symbols })
             });
             const data = await res.json();
+            console.log('Analysis response:', data);
             if(statusMsg) {
                 statusMsg.textContent = data.message;
                 statusMsg.classList.remove('hidden');
             }
-        } catch (e) { console.error(e); } finally {
+        } catch (e) { console.error('Analysis Error:', e); } finally {
             startAnalysisBtn.textContent = 'Start Analysis';
             startAnalysisBtn.disabled = false;
         }
@@ -290,6 +299,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- Discovery Logic ---
+    const runDiscoveryBtn = document.getElementById('run-discovery-btn');
+    const discoveryStatus = document.getElementById('discovery-status');
+
     async function fetchDiscoveryResults() {
         try {
             const grid = document.getElementById('discovery-results-grid');
@@ -315,7 +327,39 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (e) { console.error(e); }
     }
 
+    runDiscoveryBtn?.addEventListener('click', async () => {
+        try {
+            runDiscoveryBtn.disabled = true;
+            discoveryStatus?.style.setProperty('display', 'block');
+            await fetch(`${API_URL}/api/discover/run`, { method: 'POST' });
+            
+            // Poll for completion
+            const poll = setInterval(async () => {
+                const res = await fetch(`${API_URL}/api/discover`);
+                const data = await res.json();
+                
+                if (data.status === 'running' && data.message) {
+                    const statusSpan = discoveryStatus?.querySelector('span');
+                    if (statusSpan) statusSpan.textContent = data.message;
+                }
+
+                if (data.status === 'success' || data.status === 'completed') {
+                    clearInterval(poll);
+                    fetchDiscoveryResults();
+                    runDiscoveryBtn.disabled = false;
+                    discoveryStatus?.style.setProperty('display', 'none');
+                }
+            }, 5000);
+        } catch (e) { 
+            console.error(e); 
+            runDiscoveryBtn.disabled = false;
+        }
+    });
+
     // --- Watchlist Logic ---
+    const watchlistAddBtn = document.getElementById('watchlist-add-btn');
+    const watchlistAddInput = document.getElementById('watchlist-add-input');
+
     async function fetchWatchlist() {
         try {
             const tbody = document.getElementById('watchlist-tbody');
@@ -339,6 +383,19 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (e) { console.error(e); }
     }
 
+    watchlistAddBtn?.addEventListener('click', async () => {
+        const symbol = watchlistAddInput?.value.trim().toUpperCase();
+        if(!symbol) return;
+        try {
+            console.log(`Adding ${symbol} to watchlist...`);
+            const res = await fetch(`${API_URL}/api/watchlist?symbol=${symbol}`, { method: 'POST' });
+            const data = await res.json();
+            console.log('Watchlist response:', data);
+            watchlistAddInput.value = '';
+            fetchWatchlist();
+        } catch (e) { console.error('Watchlist Error:', e); } finally { watchlistAddBtn.disabled = false; }
+    });
+
     // --- Cost Analysis Logic ---
     async function fetchCostAnalysis() {
         try {
@@ -359,6 +416,107 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
         } catch (e) { console.error(e); }
+    }
+
+    // --- News Intelligence Logic ---
+    const runIntelBtn = document.getElementById('run-intelligence-btn');
+    const intelStatus = document.getElementById('intelligence-status');
+    const intelResults = document.getElementById('intelligence-results');
+    const intelEmpty = document.getElementById('intelligence-empty');
+
+    async function fetchNewsIntelligence() {
+        try {
+            const res = await fetch(`${API_URL}/api/news-intelligence`);
+            const data = await res.json();
+            if (data.status === 'completed' && data.data) {
+                renderNewsIntelligence(data.data);
+            } else if (data.status === 'running') {
+                intelStatus?.classList.remove('hidden');
+                intelEmpty?.classList.add('hidden');
+                intelResults?.classList.add('hidden');
+            }
+        } catch (e) { console.error(e); }
+    }
+
+    runIntelBtn?.addEventListener('click', async () => {
+        try {
+            runIntelBtn.disabled = true;
+            intelStatus.classList.remove('hidden');
+            intelEmpty.classList.add('hidden');
+            intelResults.classList.add('hidden');
+
+            const res = await fetch(`${API_URL}/api/news-intelligence/run`, { method: 'POST' });
+            const data = await res.json();
+            
+            // Poll for results
+            const poll = setInterval(async () => {
+                const checkRes = await fetch(`${API_URL}/api/news-intelligence`);
+                const checkData = await checkRes.json();
+                if (checkData.status === 'completed') {
+                    clearInterval(poll);
+                    renderNewsIntelligence(checkData.data);
+                    runIntelBtn.disabled = false;
+                    intelStatus.classList.add('hidden');
+                }
+            }, 3000);
+
+        } catch (e) { 
+            console.error(e);
+            runIntelBtn.disabled = false;
+        }
+    });
+
+    function renderNewsIntelligence(data) {
+        intelEmpty?.classList.add('hidden');
+        intelStatus?.classList.add('hidden');
+        intelResults?.classList.remove('hidden');
+
+        document.getElementById('intel-mood').textContent = data.market_mood || 'Neutral';
+        document.getElementById('intel-sectors').textContent = (data.top_sectors || []).join(', ');
+
+        const cardsContainer = document.getElementById('intelligence-cards');
+        if (cardsContainer) {
+            cardsContainer.innerHTML = '';
+            (data.alerts || []).forEach(alert => {
+                const card = document.createElement('div');
+                card.className = 'glass-panel';
+                card.style.padding = '20px';
+                card.style.display = 'flex';
+                card.style.flexDirection = 'column';
+                card.style.gap = '12px';
+
+                const typeColor = alert.type === 'STOCK' ? 'var(--primary)' : 'var(--success)';
+                
+                card.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                        <span style="font-size:10px; font-weight:700; padding:2px 8px; border-radius:4px; background: ${typeColor}20; color: ${typeColor}; text-transform:uppercase;">${alert.type}</span>
+                        <div style="text-align:right;">
+                            <div style="font-size:18px; font-weight:700; color:var(--text-main);">${alert.conviction}%</div>
+                            <div style="font-size:9px; color:var(--text-muted); text-transform:uppercase;">Conviction</div>
+                        </div>
+                    </div>
+                    <h3 style="margin:0; font-size:20px;">${alert.subject}</h3>
+                    <div style="font-size:13px; line-height:1.5;">
+                        <p style="margin-bottom:8px;"><strong style="color:var(--primary);">Catalyst:</strong> ${alert.catalyst}</p>
+                        <p style="margin-bottom:8px;"><strong style="color:var(--success);">Benefit:</strong> ${alert.benefit}</p>
+                    </div>
+                    <div style="margin-top:auto; padding-top:12px; border-top:1px solid rgba(255,255,255,0.05); display:flex; justify-content:space-between; align-items:center;">
+                        <span style="font-size:12px; font-weight:600; color:${alert.action === 'BUY' ? 'var(--success)' : 'var(--text-muted)'};">${alert.action} SIGNAL</span>
+                        ${alert.type === 'STOCK' ? `<button class="btn btn-primary intel-watch-btn" data-symbol="${alert.subject}" style="padding:4px 12px; font-size:11px;">+ Watchlist</button>` : ''}
+                    </div>
+                `;
+                cardsContainer.appendChild(card);
+            });
+
+            document.querySelectorAll('.intel-watch-btn').forEach(btn => {
+                btn.onclick = async () => {
+                    const sym = btn.dataset.symbol;
+                    btn.disabled = true;
+                    btn.textContent = 'Added';
+                    await fetch(`${API_URL}/api/watchlist?symbol=${sym}`, { method: 'POST' });
+                };
+            });
+        }
     }
 
     showView('view-dashboard');

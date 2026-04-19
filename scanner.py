@@ -62,9 +62,14 @@ class MarketScanner:
             time.sleep(0.5) # Brief pause between batches
         return activity_results
 
-    def run_scan(self) -> list:
+    def run_scan(self, progress_callback=None) -> list:
         """Deep Scan: Mid & Small Cap momentum leaders with Telegram Alerts"""
-        print("Initializing Deep Market Scan (Mid & Small Caps)...")
+        def update_status(msg):
+            print(msg)
+            if progress_callback:
+                progress_callback(msg)
+
+        update_status("Initializing Deep Market Scan (Mid & Small Caps)...")
         
         # 1. Fetch Universal Lists
         mid_list = self.get_mid_cap_tickers()
@@ -75,10 +80,10 @@ class MarketScanner:
             print("Error: Universal list empty. Falling back to core tickers.")
             total_universe = ["IWM", "MDY", "VTI", "PLTR", "SOFI", "U", "CHPT", "DKNG"]
 
-        print(f"Universe identified: {len(mid_list)} Mid-Caps, {len(small_list)} Small-Caps.")
+        update_status(f"Universe identified: {len(mid_list)} Mid-Caps, {len(small_list)} Small-Caps.")
         
         # 2. Optimized Activity Check
-        print(f"Filtering {len(total_universe)} stocks for activity leaders...")
+        update_status(f"Filtering {len(total_universe)} stocks for activity leaders...")
         vol_data = self._batch_fetch_volume(total_universe)
         
         ranked_mid = [(t, vol_data[t]) for t in mid_list if t in vol_data]
@@ -89,10 +94,10 @@ class MarketScanner:
         top_small = [t[0] for t in sorted(ranked_small, key=lambda x: x[1], reverse=True)[:100]]
         active_universe = top_mid + top_small
         
-        print(f"Active Universe focused to {len(active_universe)} leaders.")
+        update_status(f"Active Universe focused to {len(active_universe)} leaders.")
         
         # 3. Momentum Scan (The "Math Hunter")
-        print("Running Momentum Hunter (60d trend)...")
+        update_status("Running Momentum Hunter (60d trend)...")
         momentum_data = yf.download(active_universe, period="60d", group_by='ticker', progress=False)
         
         candidates = []
@@ -126,10 +131,10 @@ class MarketScanner:
         
         # 4. AI Deep-Dive & Telegram Alerts
         findings = []
-        print(f"Top 10 candidates identified: {[p['symbol'] for p in top_picks]}")
+        update_status(f"Top 10 candidates identified: {[p['symbol'] for p in top_picks]}")
         for pick in top_picks:
             symbol = pick['symbol']
-            print(f"  AI Validating: {symbol}...")
+            update_status(f"  AI Validating: {symbol}...")
             # Run the full AI engine (with Visual Intelligence)
             rec = self.engine.analyze_stock(symbol, bypass_cache=True, save_to_db=False)
             if rec:

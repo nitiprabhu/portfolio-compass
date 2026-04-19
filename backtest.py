@@ -9,7 +9,7 @@ class BacktestEngine(RecommendationEngine):
         super().__init__()
         self.backtest_date = backtest_date
         
-    def _get_technicals(self, symbol: str) -> dict:
+    def _get_technicals(self, symbol: str, sector: str = "Unknown", **kwargs) -> dict:
         try:
             ticker = yf.Ticker(symbol)
             # Fetch data up to backtest_date

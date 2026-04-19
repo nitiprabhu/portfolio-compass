@@ -133,8 +133,8 @@ class RecommendationDB:
             cursor.execute("""
                 INSERT INTO recommendations 
                 (symbol, recommendation, conviction, entry_price, stop_loss, 
-                 target_price, fundamentals_score, technical_score, reasoning, risks, news_sentiment, news_json, reflection)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 target_price, fundamentals_score, technical_score, reasoning, risks_json, news_sentiment, news_json, atr_stop, atr14, reflection)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 rec["symbol"],
                 rec["recommendation"],
@@ -148,6 +148,8 @@ class RecommendationDB:
                 json.dumps(rec.get("risks", [])),
                 rec.get("news_sentiment", 3),
                 rec.get("news_json", "[]"),
+                rec.get("atr_stop"),
+                rec.get("atr14"),
                 rec.get("reflection", "")
             ))
             conn.commit()
@@ -261,19 +263,23 @@ class RecommendationDB:
 class RecommendationEngine:
     """Main engine that generates recommendations"""
     
-    def __init__(self):
+    def __init__(self, db_path: str = "recommendations.db"):
         # Load .env file if it exists
         if os.path.exists(".env"):
             with open(".env") as f:
                 for line in f:
                     if "=" in line:
                         k, v = line.strip().split("=", 1)
-                        os.environ[k] = v
+                        # Only set if not already set by env vars
+                        if k not in os.environ:
+                            os.environ[k] = v
         
         self.client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
-        self.db = RecommendationDB()
+        self.db_path = db_path
+        self.db = RecommendationDB(db_path)
     
-    def analyze_stock(self, symbol: str, bypass_cache: bool = False, save_to_db: bool = True) -> Optional[Dict]:
+    def analyze_stock(self, symbol: str, bypass_cache: bool = False, save_to_db: bool = True, 
+                     market_mood: Optional[str] = None, mood_history: Optional[List[Dict]] = None) -> Optional[Dict]:
         """
         Analyze a stock and return structured recommendation
         
@@ -330,7 +336,7 @@ class RecommendationEngine:
 
             # 4. Ask Claude for recommendation
             prompt = self._build_prompt(symbol, fundamentals, technicals, fund_score, tech_score,
-                                        regime, news, history, port_stats)
+                                        regime, news, history, port_stats, market_mood, mood_history)
             
             response = self.client.messages.create(
                 model="claude-haiku-4-5-20251001",
@@ -854,7 +860,8 @@ class RecommendationEngine:
         else:                  return 0
     
     def _build_prompt(self, symbol: str, fund: Dict, tech: Dict, fund_score: int, tech_score: int,
-                     regime: Dict, news: List[Dict], history: str, port_stats: str) -> str:
+                     regime: Dict, news: List[Dict], history: str, port_stats: str, 
+                     market_mood: Optional[str] = None, mood_history: Optional[List[Dict]] = None) -> str:
         """Build expert-grade prompt using all enhanced indicators."""
         news_text = "\n".join([f"- {n['content']['title']}: {n['content'].get('summary', '')}" for n in news])
         market_regime = regime.get("trend", "SIDEWAYS")
@@ -914,6 +921,9 @@ TECHNICAL SNAPSHOT — Score: {tech_score}/5 (Raw: {tech.get('_raw_score', 'N/A'
 • 1Y return:    {tech.get('change_1y',0):.1f}%
 
 MARKET REGIME: {market_regime}  |  VIX: {vix}
+OVERALL NEWS MOOD: {market_mood if market_mood else "Neutral/No Data"}
+SENTIMENT TREND (Last 7 Days):
+{chr(10).join([f"- {h['date']}: {h['mood']}" for h in mood_history]) if mood_history else "N/A"}
 
 PRICE ACTION DIGEST:
 {tech.get('daily_digest','')}
@@ -1023,12 +1033,13 @@ Be precise, decisive, and tactical. Every word should help the trader act.
         
         return rec_dict
     
-    def batch_analyze(self, symbols: List[str]) -> List[Dict]:
+    def batch_analyze(self, symbols: List[str], market_mood: Optional[str] = None, 
+                     mood_history: Optional[List[Dict]] = None) -> List[Dict]:
         """Analyze multiple stocks"""
         results = []
         for symbol in symbols:
             print(f"Analyzing {symbol}...")
-            rec = self.analyze_stock(symbol)
+            rec = self.analyze_stock(symbol, market_mood=market_mood, mood_history=mood_history)
             if rec:
                 results.append(rec)
         return results

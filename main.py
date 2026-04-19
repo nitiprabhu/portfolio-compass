@@ -22,11 +22,14 @@ if os.path.exists(".env"):
 from recommendation_engine import RecommendationEngine
 from weekly_backtest import run_backtest_job
 from scanner import MarketScanner
+from intelligence import NewsIntelligence
 from contextlib import asynccontextmanager
 
 # Global Discovery Cache
 scanner = MarketScanner()
+news_intel = NewsIntelligence()
 discovery_results = {"status": "idle", "data": [], "last_run": None}
+news_results = {"status": "idle", "data": {}, "history": [], "last_run": None}
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -54,7 +57,7 @@ app.add_middleware(
 engine = RecommendationEngine()
 
 # Database Migration: ensure peak_price and news_sentiment exists
-with sqlite3.connect(engine.db.db_path) as conn:
+with sqlite3.connect(engine.db_path) as conn:
     try:
         conn.execute("ALTER TABLE outcomes ADD COLUMN peak_price REAL")
     except:
@@ -80,15 +83,13 @@ class AnalysisRequest(BaseModel):
 def get_all_recommendations():
     """Returns recommendations for symbols in watchlist or active portfolio — used by the Dashboard table."""
     try:
-        with sqlite3.connect(engine.db.db_path) as conn:
+        with sqlite3.connect(engine.db_path) as conn:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
-            # Filter to show only symbols user is tracking in watchlist or has open in outcomes
+            # Show all recent recommendations
             cursor.execute("""
-                SELECT r.* FROM recommendations r
-                WHERE r.symbol IN (SELECT symbol FROM watchlist)
-                   OR r.symbol IN (SELECT symbol FROM outcomes WHERE status = 'OPEN')
-                ORDER BY r.created_at DESC LIMIT 50
+                SELECT * FROM recommendations 
+                ORDER BY created_at DESC LIMIT 50
             """)
             rows = cursor.fetchall()
             return {"status": "success", "data": [dict(ix) for ix in rows]}
@@ -98,12 +99,15 @@ def get_all_recommendations():
 
 @app.post("/api/analyze")
 def trigger_analysis(req: AnalysisRequest, background_tasks: BackgroundTasks):
+    print(f"DEBUG: Triggering analysis for symbols: {req.symbols}")
     def run_analysis(symbols):
-        engine.batch_analyze(symbols)
+        mood = news_results.get("data", {}).get("market_mood")
+        history = news_results.get("history", [])
+        engine.batch_analyze(symbols, market_mood=mood, mood_history=history)
         
         # ── Send a quick Telegram summary after manual trigger ──
         try:
-            with sqlite3.connect(engine.db.db_path) as conn:
+            with sqlite3.connect(engine.db_path) as conn:
                 cursor = conn.cursor()
                 # Get last 1 minute recs
                 time_threshold = (datetime.now() - timedelta(minutes=1)).strftime('%Y-%m-%d %H:%M:%S')
@@ -187,13 +191,17 @@ def get_discovery_results():
     return discovery_results
 
 def run_discovery_job():
-    global discovery_results
+    def update_progress(msg):
+        discovery_results["message"] = msg
+
     try:
         discovery_results["status"] = "running"
-        results = scanner.run_scan()
+        discovery_results["message"] = "Initializing..."
+        results = scanner.run_scan(progress_callback=update_progress)
         discovery_results = {
             "status": "completed",
             "data": results,
+            "message": "Scan complete!",
             "last_run": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
         
@@ -230,10 +238,77 @@ def start_discovery_scan(background_tasks: BackgroundTasks):
     return {"status": "started", "message": "Market discovery scan initiated in background"}
 
 
+@app.get("/api/news-intelligence")
+def get_news_intelligence():
+    return news_results
+
+def update_news_cache(results):
+    """Helper to update global results and history, then persist to disk"""
+    global news_results
+    new_entry = {
+        "date": datetime.now().strftime("%Y-%m-%d"),
+        "mood": results.get("market_mood", "Neutral")
+    }
+    
+    history = news_results.get("history", [])
+    if not isinstance(history, list): history = []
+    
+    # Avoid duplicate entries for same day
+    history = [h for h in history if h["date"] != new_entry["date"]]
+    history.append(new_entry)
+    history.sort(key=lambda x: x["date"], reverse=True)
+    history = history[:7]
+    
+    news_results["status"] = "completed"
+    news_results["data"] = results
+    news_results["history"] = history
+    news_results["last_run"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    try:
+        with open("news_cache.json", "w") as f:
+            json.dump(news_results, f)
+    except: pass
+
+def run_news_intelligence_job():
+    global news_results
+    try:
+        print("[News Intelligence] Starting analysis job...")
+        news_results["status"] = "running"
+        results = news_intel.run_daily_scan()
+        
+        update_news_cache(results)
+        print(f"[News Intelligence] Analysis complete. Alerts found: {len(results.get('alerts', []))}")
+        
+        # ── Send Telegram Alert ──
+        if "summary_for_telegram" in results:
+            print("[News Intelligence] Sending Telegram alert...")
+            send_telegram_alert(results["summary_for_telegram"])
+            
+    except Exception as e:
+        print(f"[News Intelligence] CRITICAL ERROR: {e}")
+        news_results["status"] = "error"
+        news_results["message"] = str(e)
+        news_results["last_run"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        send_telegram_alert(f"⚠️ News Analysis Failed: {e}")
+
+@app.post("/api/news-intelligence/run")
+def start_news_analysis(background_tasks: BackgroundTasks):
+    background_tasks.add_task(run_news_intelligence_job)
+    return {"status": "started", "message": "Daily news analysis initiated in background"}
+
+# ── Load News Cache on Startup ──
+if os.path.exists("news_cache.json"):
+    try:
+        with open("news_cache.json", "r") as f:
+            news_results = json.load(f)
+    except:
+        pass
+
+
 @app.get("/api/portfolio")
 def get_portfolio():
     try:
-        with sqlite3.connect(engine.db.db_path) as conn:
+        with sqlite3.connect(engine.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute("""
                 SELECT r.symbol, r.recommendation, r.entry_price, r.target_price, r.stop_loss, r.created_at, o.status
@@ -256,7 +331,7 @@ def get_portfolio():
         total_invested = 0
         total_current = 0
         
-        with sqlite3.connect(engine.db.db_path) as conn:
+        with sqlite3.connect(engine.db_path) as conn:
             for pos in positions:
                 symbol, action, entry, target, stop, date, status = pos
                 if entry is None: continue
@@ -360,7 +435,7 @@ def get_portfolio():
 @app.get("/api/watchlist")
 def get_watchlist():
     try:
-        with sqlite3.connect(engine.db.db_path) as conn:
+        with sqlite3.connect(engine.db_path) as conn:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
             cursor.execute("SELECT * FROM watchlist ORDER BY added_at DESC")
@@ -379,9 +454,10 @@ def get_watchlist():
 
 @app.post("/api/watchlist")
 def add_to_watchlist(symbol: str):
+    print(f"DEBUG: Adding {symbol} to watchlist")
     try:
         symbol = symbol.upper().strip()
-        with sqlite3.connect(engine.db.db_path) as conn:
+        with sqlite3.connect(engine.db_path) as conn:
             cursor = conn.cursor()
             # 3 month expiry
             expires_at = (datetime.now() + timedelta(days=90)).strftime('%Y-%m-%d %H:%M:%S')
@@ -398,7 +474,7 @@ def add_to_watchlist(symbol: str):
 def remove_from_watchlist(symbol: str):
     try:
         symbol = symbol.upper().strip()
-        with sqlite3.connect(engine.db.db_path) as conn:
+        with sqlite3.connect(engine.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute("DELETE FROM watchlist WHERE symbol = ?", (symbol,))
             conn.commit()
@@ -409,7 +485,7 @@ def remove_from_watchlist(symbol: str):
 @app.get("/api/cost-analysis")
 def get_cost_analysis():
     try:
-        with sqlite3.connect(engine.db.db_path) as conn:
+        with sqlite3.connect(engine.db_path) as conn:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
             
@@ -450,7 +526,7 @@ def get_cost_analysis():
 @app.get("/api/paper-trades")
 def get_paper_trades():
     try:
-        with sqlite3.connect(engine.db.db_path) as conn:
+        with sqlite3.connect(engine.db_path) as conn:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
             cursor.execute("SELECT * FROM paper_trades ORDER BY opened_at DESC")
@@ -482,7 +558,7 @@ def send_telegram_alert(message: str):
 def send_weekly_status():
     """Calculates and sends a performance summary every Sunday."""
     try:
-        with sqlite3.connect(engine.db.db_path) as conn:
+        with sqlite3.connect(engine.db_path) as conn:
             cursor = conn.cursor()
             # 1. Total Stats
             cursor.execute("SELECT COUNT(*), AVG(return_pct), MAX(return_pct) FROM outcomes WHERE check_date > datetime('now', '-7 days')")
@@ -522,7 +598,7 @@ def check_sector_concentration() -> Optional[str]:
         "CPER": "Basic Materials", "URA": "Energy", "CNXT": "International/ETF"
     }
     try:
-        with sqlite3.connect(engine.db.db_path) as conn:
+        with sqlite3.connect(engine.db_path) as conn:
             cursor = conn.cursor()
             # Check BUY recommendations from the last 7 days
             threshold = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d %H:%M:%S')
@@ -556,7 +632,7 @@ def check_sector_concentration() -> Optional[str]:
 def monitor_portfolio_alerts():
     """Scans open positions and fires Telegram when stops or targets are hit."""
     try:
-        with sqlite3.connect(engine.db.db_path) as conn:
+        with sqlite3.connect(engine.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute("""
                 SELECT r.symbol, r.entry_price, r.target_price, r.stop_loss, o.peak_price
@@ -625,17 +701,41 @@ async def background_daily_analysis():
             
             last_sunday_report_date = now.date()
 
-        # ── Daily Analysis (Monday–Friday) ─────
-        if current_day < 5 and last_daily_analysis_date != now.date():
+        # ── Daily Analysis (Monday–Friday during US Pre-market: ~14:00 IST / 04:30 ET) ─────
+        if current_day < 5 and now.hour >= 14 and last_daily_analysis_date != now.date():
             symbols_to_track = ["AVGO", "GOOGL", "CPER", "URA", "VNT", "CPNG", "SMH", "CNXT", "ARKW", "STEP", "INTC"]
             try:
                 print(f"[{now}] Executing Automated Daily Analysis...")
-                # Full technical analysis for your actual holdings
-                engine.batch_analyze(symbols_to_track)
+                
+                # ── News Intelligence Scan FIRST ─────
+                print(f"[{now}] Processing News Intelligence...")
+                # We await this so we have the mood for the subsequent analysis
+                try:
+                    results = await asyncio.to_thread(news_intel.run_daily_scan)
+                    news_results = {
+                        "status": "completed",
+                        "data": results,
+                        "last_run": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    }
+                    market_mood = results.get("market_mood")
+                    
+                    if "summary_for_telegram" in results:
+                        send_telegram_alert(results["summary_for_telegram"])
+                        
+                    with open("news_cache.json", "w") as f:
+                        json.dump(news_results, f)
+                except Exception as ne:
+                    print(f"News Analysis failed: {ne}")
+                    market_mood = None
+
+                # ── Full Analysis with News Integration ─────
+                mood_history = news_results.get("history", [])
+                engine.batch_analyze(symbols_to_track, market_mood=market_mood, mood_history=mood_history)
+                
                 
                 # Check for BUY Alerts
                 time_threshold = (now - timedelta(minutes=15)).strftime('%Y-%m-%d %H:%M:%S')
-                with sqlite3.connect(engine.db.db_path) as conn:
+                with sqlite3.connect(engine.db_path) as conn:
                     cursor = conn.cursor()
                     cursor.execute("""
                         SELECT symbol, recommendation, conviction, entry_price, target_price, stop_loss 
@@ -675,7 +775,7 @@ async def background_daily_analysis():
                 
                 # ── Watchlist Paper Trading ─────
                 print(f"[{now}] Processing Watchlist & Paper Trading...")
-                with sqlite3.connect(engine.db.db_path) as conn:
+                with sqlite3.connect(engine.db_path) as conn:
                     cursor = conn.cursor()
                     cursor.execute("SELECT symbol FROM watchlist")
                     watch_symbols = [row[0] for row in cursor.fetchall()]
@@ -685,7 +785,7 @@ async def background_daily_analysis():
                     if not rec: continue
                     
                     price = rec['entry_price']
-                    with sqlite3.connect(engine.db.db_path) as conn:
+                    with sqlite3.connect(engine.db_path) as conn:
                         cursor = conn.cursor()
                         cursor.execute("SELECT id, quantity FROM paper_trades WHERE symbol = ? AND status = 'OPEN'", (ws,))
                         active_trade = cursor.fetchone()
@@ -737,7 +837,7 @@ async def background_daily_analysis():
                 
                 # ── Watchlist Paper Trading ─────
                 print(f"[{now}] Processing Watchlist & Paper Trading...")
-                with sqlite3.connect(engine.db.db_path) as conn:
+                with sqlite3.connect(engine.db_path) as conn:
                     cursor = conn.cursor()
                     cursor.execute("SELECT symbol FROM watchlist")
                     watch_symbols = [row[0] for row in cursor.fetchall()]
@@ -747,7 +847,7 @@ async def background_daily_analysis():
                     if not rec: continue
                     
                     price = rec['entry_price']
-                    with sqlite3.connect(engine.db.db_path) as conn:
+                    with sqlite3.connect(engine.db_path) as conn:
                         cursor = conn.cursor()
                         cursor.execute("SELECT id, quantity FROM paper_trades WHERE symbol = ? AND status = 'OPEN'", (ws,))
                         active_trade = cursor.fetchone()

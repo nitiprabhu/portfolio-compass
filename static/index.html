@@ -22,7 +22,7 @@
                 <a href="#" class="nav-item active" id="nav-dashboard">
                     <i data-lucide="home"></i> Dashboard
                 </a>
-                <a href="#" class="nav-item">
+                <a href="#" class="nav-item" id="nav-recommendations">
                     <i data-lucide="trending-up"></i> Recommendations
                 </a>
                 <a href="#" class="nav-item" id="nav-portfolio">
@@ -34,13 +34,16 @@
                 <a href="#" class="nav-item" id="nav-discovery">
                     <i data-lucide="search"></i> Market Discovery
                 </a>
+                <a href="#" class="nav-item" id="nav-intelligence">
+                    <i data-lucide="newspaper"></i> News Intelligence
+                </a>
                 <a href="#" class="nav-item" id="nav-watchlist">
                     <i data-lucide="eye"></i> Watchlist
                 </a>
                 <a href="#" class="nav-item" id="nav-costs">
                     <i data-lucide="banknote"></i> Cost Analysis
                 </a>
-                <a href="#" class="nav-item">
+                <a href="#" class="nav-item" id="nav-settings">
                     <i data-lucide="settings"></i> Settings
                 </a>
             </nav>
@@ -298,6 +301,50 @@
                 </div>
             </div> <!-- End Discovery View -->
 
+            <!-- Intelligence View (Hidden by default) -->
+            <div id="view-intelligence" class="hidden">
+                <div class="section-container glass-panel">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px;">
+                        <div>
+                            <h2 style="font-size: 18px; font-weight: 600; color: var(--text-main); margin-bottom: 4px;">News Intelligence</h2>
+                            <p style="color: var(--text-muted); font-size: 13px;">AI-powered analysis of sector trends and market-moving news</p>
+                        </div>
+                        <button class="btn btn-primary" id="run-intelligence-btn" style="padding: 8px 16px; font-size: 13px;">
+                            <i data-lucide="zap"></i> Run AI News Analysis
+                        </button>
+                    </div>
+
+                    <div id="intelligence-status" class="hidden" style="padding: 20px; background: rgba(59, 130, 246, 0.1); border: 1px solid var(--primary); border-radius: 12px; margin-bottom: 24px; color: var(--primary);">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div class="spinner"></div>
+                            <span>Analyzing global sector news... this takes about 15 seconds.</span>
+                        </div>
+                    </div>
+
+                    <div id="intelligence-results" class="hidden">
+                        <div class="intelligence-header" style="margin-bottom: 24px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+                            <div class="glass-panel" style="padding: 16px; border-left: 4px solid var(--primary);">
+                                <span style="display: block; font-size: 11px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 4px;">Market Mood</span>
+                                <div id="intel-mood" style="font-size: 16px; font-weight: 600;">--</div>
+                            </div>
+                            <div class="glass-panel" style="padding: 16px; border-left: 4px solid var(--success);">
+                                <span style="display: block; font-size: 11px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 4px;">Hot Sectors</span>
+                                <div id="intel-sectors" style="font-size: 16px; font-weight: 600;">--</div>
+                            </div>
+                        </div>
+
+                        <div id="intelligence-cards" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 20px;">
+                            <!-- Intelligence cards injected here -->
+                        </div>
+                    </div>
+
+                    <div id="intelligence-empty" style="text-align: center; padding: 60px; color: var(--text-muted);">
+                        <i data-lucide="newspaper" style="width: 48px; height: 48px; opacity: 0.2; margin-bottom: 16px;"></i>
+                        <p>No news analysis yet. Click the button above to start.</p>
+                    </div>
+                </div>
+            </div>
+
             <!-- Watchlist View (Hidden by default) -->
             <div id="view-watchlist" class="dashboard-grid hidden">
                 <div class="section-container glass-panel">
@@ -385,7 +432,7 @@
 
         </main>
     </div>
-    <script src="app.js?v=4"></script>
+    <script src="app.js?v=7"></script>
     <script>
         lucide.createIcons();
     </script>
