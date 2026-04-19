@@ -34,9 +34,6 @@ class MarketScanner:
             print(f"Scrape error for {url}: {e}")
             return []
 
-    def get_mid_cap_tickers(self) -> list:
-        return self._fetch_wikipedia_tickers("https://en.wikipedia.org/wiki/List_of_S%26P_400_companies")
-
     def get_small_cap_tickers(self) -> list:
         return self._fetch_wikipedia_tickers("https://en.wikipedia.org/wiki/List_of_S%26P_600_companies")
 
@@ -72,27 +69,23 @@ class MarketScanner:
         update_status("Initializing Deep Market Scan (Mid & Small Caps)...")
         
         # 1. Fetch Universal Lists
-        mid_list = self.get_mid_cap_tickers()
         small_list = self.get_small_cap_tickers()
-        total_universe = mid_list + small_list
+        total_universe = small_list
         
         if not total_universe:
             print("Error: Universal list empty. Falling back to core tickers.")
             total_universe = ["IWM", "MDY", "VTI", "PLTR", "SOFI", "U", "CHPT", "DKNG"]
 
-        update_status(f"Universe identified: {len(mid_list)} Mid-Caps, {len(small_list)} Small-Caps.")
+        update_status(f"Universe identified: {len(small_list)} Small-Cap candidates.")
         
         # 2. Optimized Activity Check
         update_status(f"Filtering {len(total_universe)} stocks for activity leaders...")
         vol_data = self._batch_fetch_volume(total_universe)
         
-        ranked_mid = [(t, vol_data[t]) for t in mid_list if t in vol_data]
         ranked_small = [(t, vol_data[t]) for t in small_list if t in vol_data]
         
-        # Sort by volume and pick top 100 of each
-        top_mid = [t[0] for t in sorted(ranked_mid, key=lambda x: x[1], reverse=True)[:100]]
-        top_small = [t[0] for t in sorted(ranked_small, key=lambda x: x[1], reverse=True)[:100]]
-        active_universe = top_mid + top_small
+        # Sort by volume and pick top 200 (wider net for micro-caps)
+        active_universe = [t[0] for t in sorted(ranked_small, key=lambda x: x[1], reverse=True)[:200]]
         
         update_status(f"Active Universe focused to {len(active_universe)} leaders.")
         
