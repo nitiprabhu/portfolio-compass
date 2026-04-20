@@ -225,8 +225,20 @@ def trigger_discovery(background_tasks: BackgroundTasks):
 
 async def task_daily_analysis():
     now = datetime.now()
-    symbols = ["AVGO", "GOOGL", "CPER", "URA", "VNT", "CPNG", "SMH", "CNXT", "ARKW", "STEP", "INTC"]
-    print(f"[{now}] Running Daily Automation...")
+    # 0. Fetch dynamic symbol list from Watchlist
+    symbols = []
+    try:
+        with engine.db.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT symbol FROM watchlist")
+            symbols = [row[0] for row in cursor.fetchall()]
+    except: pass
+    
+    # Fallback to core leaders if watchlist is empty
+    if not symbols:
+        symbols = ["AVGO", "GOOGL", "PLTR", "SOFI", "VTI", "SMH", "INTC"]
+
+    print(f"[{now}] Running Daily Automation for {len(symbols)} symbols...")
     try:
         # 1. News Intelligence
         intel = await asyncio.to_thread(news_intel.run_daily_scan)
