@@ -272,9 +272,15 @@ async def cron_premarket_scan(background_tasks: BackgroundTasks):
     return {"status": "success", "message": "Pre-market gap scan queued"}
 
 @app.post("/api/cron/weekly-report")
-async def cron_weekly_report():
-    send_telegram_alert("📊 <b>Weekly Strategic Review</b>\nMarket is closed. Resting.")
-    return {"status": "success", "message": "Weekly report sent"}
+async def cron_weekly_report(background_tasks: BackgroundTasks):
+    def run_sunday_strategy():
+        send_telegram_alert("📊 <b>Starting Weekly Strategic Review...</b>\nRunning fresh market discovery for the week ahead.")
+        res = scanner.run_scan()
+        engine.db.save_discovery_results(res)
+        send_telegram_alert(f"✅ <b>Weekly Discovery Complete</b>\nFound {len(res)} high-momentum candidates for your watchlist.")
+    
+    background_tasks.add_task(run_sunday_strategy)
+    return {"status": "success", "message": "Weekly strategic discovery queued"}
 
 @app.post("/api/cron/update-outcomes")
 async def cron_update_outcomes(background_tasks: BackgroundTasks):

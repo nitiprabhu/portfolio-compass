@@ -2,7 +2,7 @@ name: Daily Market Analysis
 
 on:
   schedule:
-    - cron: '30 8 * * 1-5' # 14:00 IST (08:30 UTC) Mon-Fri
+    - cron: '30 8 * * *' # 14:00 IST (08:30 UTC) Daily
   workflow_dispatch:
 
 jobs:
