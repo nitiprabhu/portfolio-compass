@@ -150,7 +150,7 @@ class MarketScanner:
         update_status("Starting Pre-Market Gap Discovery...")
         
         # 1. Fetch S&P 600 Candidates
-        sp600_tickers = self.get_sp600_leaders()
+        sp600_tickers = self.get_small_cap_tickers()
         
         # 2. Bulk Fetch Current OHLC for Gap Analysis
         update_status(f"Analysing gap potential for {len(sp600_tickers)} leaders...")

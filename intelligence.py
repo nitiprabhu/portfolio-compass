@@ -29,8 +29,10 @@ class NewsIntelligence:
         
         # 1. Fetch general market and major indices news (Increased depth)
         targets = ["stock market news", "^GSPC", "^IXIC", "^DJI", "business news"]
+        import time
         for target in targets:
             try:
+                time.sleep(1) # Prevent rate limiting
                 search = yf.Search(target)
                 if hasattr(search, 'news'):
                     all_news.extend(search.news[:10])
@@ -40,6 +42,8 @@ class NewsIntelligence:
         # 2. Fetch sector-specific news (Increased to 5 per sector)
         for etf, name in self.sectors.items():
             try:
+                import time
+                time.sleep(1.5) # Prevent rate limiting
                 ticker = yf.Ticker(etf)
                 news = ticker.news[:5] 
                 for n in news:
