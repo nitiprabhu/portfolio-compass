@@ -1,0 +1,14 @@
+name: Daily Price & Outcome Updates
+
+on:
+  schedule:
+    - cron: '0 22 * * 1-5' # 22:00 UTC Mon-Fri (US Market Close)
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Outcome Update
+        run: |
+          curl -X POST https://portfolio-compass-k4aw.onrender.com/api/cron/update-outcomes

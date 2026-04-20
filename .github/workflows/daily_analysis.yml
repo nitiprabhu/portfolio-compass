@@ -1,0 +1,14 @@
+name: Daily Market Analysis
+
+on:
+  schedule:
+    - cron: '30 8 * * *' # 14:00 IST (08:30 UTC) Daily
+  workflow_dispatch:
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Daily Analysis
+        run: |
+          curl -X POST https://portfolio-compass-k4aw.onrender.com/api/cron/daily-analysis
