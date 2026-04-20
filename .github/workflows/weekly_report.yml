@@ -1,0 +1,14 @@
+name: Weekly Strategic Report
+
+on:
+  schedule:
+    - cron: '0 9 * * 0' # 09:00 UTC (14:30 IST) Sunday
+  workflow_dispatch:
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Weekly Report
+        run: |
+          curl -X POST https://portfolio-compass-k4aw.onrender.com/api/cron/weekly-report

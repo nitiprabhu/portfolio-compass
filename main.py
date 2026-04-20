@@ -1,4 +1,4 @@
-from fastapi import FastAPI, BackgroundTasks, HTTPException
+from fastapi import FastAPI, BackgroundTasks, HTTPException, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -11,7 +11,7 @@ import os
 import httpx
 import json
 
-# ── Load .env early so all os.environ.get() calls below succeed ──
+# ── Load .env early ──
 if os.path.exists(".env"):
     with open(".env") as _f:
         for _line in _f:
@@ -27,6 +27,7 @@ except ImportError:
 from weekly_backtest import run_backtest_job
 from scanner import MarketScanner
 from intelligence import NewsIntelligence
+from update_outcomes import update_all_outcomes
 from contextlib import asynccontextmanager
 
 # Global Discovery Cache
@@ -37,15 +38,7 @@ discovery_results = {"status": "idle", "data": [], "last_run": None}
 # Intelligent News Cache
 news_results = {"status": "idle", "data": {}, "history": [], "last_run": None, "expires_at": None}
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    daily_task = asyncio.create_task(background_daily_analysis())
-    yield
-    daily_task.cancel()
-    try: await daily_task
-    except asyncio.CancelledError: pass
-
-app = FastAPI(title="Portfolio Compass API", lifespan=lifespan)
+app = FastAPI(title="Portfolio Compass API")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 engine = RecommendationEngine()
 
@@ -228,67 +221,72 @@ def trigger_discovery(background_tasks: BackgroundTasks):
     background_tasks.add_task(run_discovery)
     return {"status": "started"}
 
+# ── Refactored Automation Tasks ──
+
+async def task_daily_analysis():
+    now = datetime.now()
+    symbols = ["AVGO", "GOOGL", "CPER", "URA", "VNT", "CPNG", "SMH", "CNXT", "ARKW", "STEP", "INTC"]
+    print(f"[{now}] Running Daily Automation...")
+    try:
+        # 1. News Intelligence
+        intel = await asyncio.to_thread(news_intel.run_daily_scan)
+        engine.db.save_news_intelligence(intel, ttl_days=7)
+        market_mood = intel.get("market_mood", "Neutral")
+        if "summary_for_telegram" in intel: send_telegram_alert(intel["summary_for_telegram"])
+        
+        # 2. Stock Deep-Dive
+        for s in symbols:
+            engine.analyze_stock(s, bypass_cache=True, save_to_db=True, market_mood=market_mood)
+            await asyncio.sleep(2)
+        
+        # 3. Watchlist Review
+        watchlist_alerts = []
+        with engine.db.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT symbol FROM watchlist")
+            for ws_row in cursor.fetchall():
+                ws = ws_row[0]
+                rec = engine.analyze_stock(ws, bypass_cache=True, save_to_db=True, market_mood=market_mood)
+                if rec and rec['recommendation'] == 'BUY':
+                    t = yf.Ticker(ws)
+                    curr = t.info.get('regularMarketPrice') or rec['entry_price']
+                    if abs((curr - rec['entry_price'])/rec['entry_price']) < 0.02:
+                        watchlist_alerts.append(f"🔥 <b>{ws}</b>: Near entry at ${curr:.2f}")
+        
+        if watchlist_alerts: send_telegram_alert("⭐ <b>WATCHLIST HOT ZONE</b>\n" + "\n".join(watchlist_alerts))
+        print(f"[{now}] Daily Automation Completed.")
+    except Exception as e: 
+        print(f"Daily Error: {e}")
+        send_telegram_alert(f"❌ <b>Daily Automation Failed</b>\n{str(e)}")
+
+# ── API Cron Endpoints ──
+
+@app.post("/api/cron/daily-analysis")
+async def cron_daily_analysis(background_tasks: BackgroundTasks):
+    background_tasks.add_task(task_daily_analysis)
+    return {"status": "success", "message": "Daily analysis task queued"}
+
+@app.post("/api/cron/premarket-scan")
+async def cron_premarket_scan(background_tasks: BackgroundTasks):
+    background_tasks.add_task(asyncio.to_thread, scanner.run_premarket_scan)
+    return {"status": "success", "message": "Pre-market gap scan queued"}
+
+@app.post("/api/cron/weekly-report")
+async def cron_weekly_report():
+    send_telegram_alert("📊 <b>Weekly Strategic Review</b>\nMarket is closed. Resting.")
+    return {"status": "success", "message": "Weekly report sent"}
+
+@app.post("/api/cron/update-outcomes")
+async def cron_update_outcomes(background_tasks: BackgroundTasks):
+    background_tasks.add_task(asyncio.to_thread, update_all_outcomes)
+    return {"status": "success", "message": "Outcome updates queued"}
+
 def send_telegram_alert(message: str):
     token = os.environ.get("TELEGRAM_BOT_TOKEN")
     chat_id = os.environ.get("TELEGRAM_CHAT_ID")
     if token and chat_id:
         try: httpx.post(f"https://api.telegram.org/bot{token}/sendMessage", json={"chat_id": chat_id, "text": message, "parse_mode": "HTML"})
         except Exception as e: print(f"Telegram failed: {e}")
-
-async def background_daily_analysis():
-    last_sunday_report_date = None
-    last_daily_analysis_date = None
-    last_premarket_date = None
-    
-    while True:
-        now = datetime.now(); current_day = now.weekday()
-        
-        # ── Sunday Report ──
-        if current_day == 6 and last_sunday_report_date != now.date():
-            send_telegram_alert("📊 <b>Weekly Strategic Review</b>\nMarket is closed. Resting.")
-            last_sunday_report_date = now.date()
-
-        # ── Daily Analysis (14:00 IST) ──
-        if current_day < 5 and now.hour >= 14 and last_daily_analysis_date != now.date():
-            symbols = ["AVGO", "GOOGL", "CPER", "URA", "VNT", "CPNG", "SMH", "CNXT", "ARKW", "STEP", "INTC"]
-            print(f"[{now}] Running Daily Automation...")
-            try:
-                # 1. News Intelligence
-                intel = await asyncio.to_thread(news_intel.run_daily_scan)
-                engine.db.save_news_intelligence(intel, ttl_days=7) # Persist!
-                market_mood = intel.get("market_mood", "Neutral")
-                if "summary_for_telegram" in intel: send_telegram_alert(intel["summary_for_telegram"])
-                
-                # 2. Stock Deep-Dive
-                for s in symbols:
-                    engine.analyze_stock(s, bypass_cache=True, save_to_db=True, market_mood=market_mood)
-                    await asyncio.sleep(2)
-                
-                # 3. Watchlist Review
-                watchlist_alerts = []
-                with engine.db.get_connection() as conn:
-                    cursor = conn.cursor()
-                    cursor.execute("SELECT symbol FROM watchlist")
-                    for ws_row in cursor.fetchall():
-                        ws = ws_row[0]
-                        rec = engine.analyze_stock(ws, bypass_cache=True, save_to_db=True, market_mood=market_mood)
-                        if rec and rec['recommendation'] == 'BUY':
-                            t = yf.Ticker(ws)
-                            curr = t.info.get('regularMarketPrice') or rec['entry_price']
-                            if abs((curr - rec['entry_price'])/rec['entry_price']) < 0.02:
-                                watchlist_alerts.append(f"🔥 <b>{ws}</b>: Near entry at ${curr:.2f}")
-                
-                if watchlist_alerts: send_telegram_alert("⭐ <b>WATCHLIST HOT ZONE</b>\n" + "\n".join(watchlist_alerts))
-                last_daily_analysis_date = now.date()
-            except Exception as e: print(f"Daily Error: {e}")
-
-        # ── Pre-Market Gap Scan (19:00 IST) ──
-        if current_day < 5 and now.hour >= 19 and last_premarket_date != now.date():
-            print(f"[{now}] Running Gap Scan...")
-            asyncio.create_task(asyncio.to_thread(scanner.run_premarket_scan))
-            last_premarket_date = now.date()
-        
-        await asyncio.sleep(3600)
 
 app.mount("/", StaticFiles(directory="static", html=True), name="static")
 
