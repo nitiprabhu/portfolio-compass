@@ -237,7 +237,7 @@ async def task_daily_analysis():
         # 2. Stock Deep-Dive
         for s in symbols:
             engine.analyze_stock(s, bypass_cache=True, save_to_db=True, market_mood=market_mood)
-            await asyncio.sleep(2)
+            await asyncio.sleep(5)
         
         # 3. Watchlist Review
         watchlist_alerts = []
