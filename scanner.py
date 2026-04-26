@@ -59,6 +59,16 @@ class MarketScanner:
             time.sleep(0.5) # Brief pause between batches
         return activity_results
 
+    def _should_scan(self) -> dict:
+        """Check market regime before scanning. Skip in extreme bear markets."""
+        try:
+            regime = self.engine._get_market_regime()
+            if regime.get("trend") == "BEAR" and regime.get("vix", 20) > 35:
+                return {"scan": False, "regime": regime, "reason": "BEAR market + VIX > 35 — cash is king."}
+            return {"scan": True, "regime": regime}
+        except:
+            return {"scan": True, "regime": {"trend": "UNKNOWN", "vix": 20, "multiplier": 0.75}}
+
     def run_scan(self, progress_callback=None) -> list:
         """Deep Scan: Mid & Small Cap momentum leaders with Telegram Alerts"""
         def update_status(msg):
@@ -66,7 +76,27 @@ class MarketScanner:
             if progress_callback:
                 progress_callback(msg)
 
-        update_status("Initializing Deep Market Scan (Mid & Small Caps)...")
+        # ── Regime Gate: bail out in extreme bear conditions ──────────────
+        regime_check = self._should_scan()
+        if not regime_check["scan"]:
+            reason = regime_check.get("reason", "Market conditions unfavorable.")
+            update_status(f"⚠️ SCAN SKIPPED: {reason}")
+            if progress_callback:
+                progress_callback(f"Scan aborted: {reason}")
+            # Send notification instead of running scan
+            try:
+                from notifier import send_telegram_alert
+                regime = regime_check["regime"]
+                send_telegram_alert(
+                    f"🛑 <b>Market Discovery Paused</b>\n"
+                    f"Regime: {regime.get('trend')} | VIX: {regime.get('vix')}\n"
+                    f"Breadth: {regime.get('breadth', 'N/A')} | Credit: {regime.get('credit', 'N/A')}\n"
+                    f"Action: Cash preservation mode. No new scans."
+                )
+            except: pass
+            return []
+
+        update_status(f"Initializing Deep Market Scan (Regime: {regime_check['regime'].get('trend')}, VIX: {regime_check['regime'].get('vix')})...")
         
         # 1. Fetch Universal Lists
         small_list = self.get_small_cap_tickers()
@@ -128,8 +158,8 @@ class MarketScanner:
         for pick in top_picks:
             symbol = pick['symbol']
             update_status(f"  AI Validating: {symbol}...")
-            # Run the full AI engine (with Visual Intelligence)
-            rec = self.engine.analyze_stock(symbol, bypass_cache=True, save_to_db=False)
+            # Run the full AI engine (with Visual Intelligence) - Now saving to DB for AutoTrader
+            rec = self.engine.analyze_stock(symbol, bypass_cache=True, save_to_db=True)
             if rec:
                 findings.append(rec)
             time.sleep(1) # Rate limit safety
@@ -139,6 +169,19 @@ class MarketScanner:
             update_status(f"Scan complete. Sending cumulative alert for {len(findings)} candidates...")
             send_bulk_discovery_alert(findings)
             
+        # ── Managed Fund: Autonomous Trading Trigger ───────────────────────
+        try:
+            update_status("🤖 Autonomous Fund: Processing trades based on new scan results...")
+            from auto_trader import AutoTrader
+            trader = AutoTrader(self.engine.db)
+            trader.sync_portfolio_equity()
+            trader.manage_existing_positions()
+            trader.process_new_recommendations()
+            trader.sync_portfolio_equity()
+            update_status("🤖 Autonomous Fund: Trading cycle complete.")
+        except Exception as e:
+            update_status(f"⚠️ Autonomous Fund error: {e}")
+
         return findings
 
     def run_premarket_scan(self, progress_callback=None):
@@ -190,7 +233,8 @@ class MarketScanner:
         for pick in top_gappers:
             symbol = pick['symbol']
             update_status(f"  Analysing Gapper: {symbol} (+{pick['gap']:.1f}% Gap)...")
-            rec = self.engine.analyze_stock(symbol, bypass_cache=True, save_to_db=False)
+            # Analysing Gapper - Now saving to DB for AutoTrader
+            rec = self.engine.analyze_stock(symbol, bypass_cache=True, save_to_db=True)
             if rec:
                 findings.append(rec)
             time.sleep(1)
@@ -198,6 +242,16 @@ class MarketScanner:
         if findings:
             send_bulk_discovery_alert(findings)
             
+        # ── Managed Fund: Autonomous Trading Trigger ───────────────────────
+        try:
+            update_status("🤖 Autonomous Fund (Pre-market): Processing trades...")
+            from auto_trader import AutoTrader
+            trader = AutoTrader(self.engine.db)
+            trader.sync_portfolio_equity()
+            trader.process_new_recommendations()
+            trader.sync_portfolio_equity()
+        except: pass
+
         return findings
 
 if __name__ == "__main__":

@@ -49,6 +49,22 @@ class RecommendationEngine:
         self.client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
         self.db_path = db_path
         self.db = RecommendationDB(db_path)
+
+        # Load learned layer weights from feedback loop (if available)
+        try:
+            from signal_calibrator import SignalCalibrator
+            self._calibrator = SignalCalibrator(self.db)
+            self._layer_weights = self._calibrator.get_current_weights()
+            if self._layer_weights.get("source") == "learned":
+                print(f"🧠 [Engine] Loaded learned weights (n={self._layer_weights['n_samples']}, acc={self._layer_weights['accuracy']:.1%})")
+            else:
+                print("🧠 [Engine] Using default equal weights (not enough training data yet).")
+        except Exception as e:
+            print(f"⚠️ [Engine] Calibrator not available, using equal weights: {e}")
+            self._layer_weights = {
+                "w_trend": 1.0, "w_momentum": 1.0, "w_volatility": 1.0,
+                "w_volume": 1.0, "w_rs": 1.0, "w_guards": 1.0, "source": "default"
+            }
     
     def analyze_stock(self, symbol: str, bypass_cache: bool = False, save_to_db: bool = True, 
                      market_mood: Optional[str] = None, mood_history: Optional[List[Dict]] = None) -> Optional[Dict]:
@@ -103,7 +119,7 @@ class RecommendationEngine:
             else:
                 fund_score = self._score_fundamentals(fundamentals)
             
-            # 3. Score
+            # 3. Score (with learned weights from feedback loop)
             tech_score = self._score_technicals(technicals, regime)   # pass regime dict
 
             # 4. Ask Claude for recommendation
@@ -142,6 +158,9 @@ class RecommendationEngine:
             rec["atr_stop"] = technicals.get("atr_stop")
             rec["atr14"]    = technicals.get("atr14")
 
+            # Attach tech layer snapshot for feedback loop
+            rec["tech_layer_snapshot"] = technicals.get("_layer_snapshot")
+
             return rec
 
         
@@ -150,7 +169,7 @@ class RecommendationEngine:
             return None
     
     def _get_fundamentals(self, symbol: str) -> Dict:
-        """Fetch fundamentals"""
+        """Fetch fundamentals with Piotroski F-Score, accruals, ROIC, insider activity, short interest."""
         try:
             ticker = yf.Ticker(symbol)
             info = getattr(ticker, 'info', {})
@@ -168,8 +187,8 @@ class RecommendationEngine:
                         "earnings_date": "N/A"
                     }
                 return {"error": f"Could not fetch fundamentals for {symbol}"}
-            
-            return {
+
+            base = {
                 "symbol": symbol,
                 "sector": info.get("sector", "Unknown"),
                 "quote_type": info.get("quoteType", "EQUITY"),
@@ -184,10 +203,108 @@ class RecommendationEngine:
                 "fcf": info.get("freeCashflow"),
                 "market_cap": info.get("marketCap"),
                 "insider_ownership": info.get("insidersPercentHeld"),
-                "earnings_date": str(ticker.calendar.get("Earnings Date", ["N/A"])[0]) if ticker.calendar is not None and "Earnings Date" in ticker.calendar else "N/A"
+                "earnings_date": str(ticker.calendar.get("Earnings Date", ["N/A"])[0]) if ticker.calendar is not None and "Earnings Date" in ticker.calendar else "N/A",
             }
+
+            # ── Piotroski F-Score (9 signals) ────────────────────────────────
+            base["piotroski_score"] = self._calculate_piotroski(ticker, info)
+
+            # ── Earnings Quality: Accruals Ratio ─────────────────────────────
+            try:
+                net_income = info.get("netIncomeToCommon", 0) or 0
+                operating_cf = info.get("operatingCashflow", 0) or 0
+                total_assets = info.get("totalAssets", 0) or info.get("totalAssets", 1)
+                if total_assets and total_assets > 0:
+                    base["accruals_ratio"] = round((net_income - operating_cf) / total_assets, 4)
+                else:
+                    base["accruals_ratio"] = None
+            except:
+                base["accruals_ratio"] = None
+
+            # ── ROIC (Return on Invested Capital) ─────────────────────────────
+            try:
+                ebit = info.get("ebitda", 0) or 0  # EBITDA as proxy
+                total_assets_val = info.get("totalAssets", 0) or 0
+                current_liabs = info.get("totalCurrentLiabilities", 0) or 0
+                invested_capital = total_assets_val - current_liabs
+                if invested_capital > 0:
+                    base["roic"] = round(ebit * 0.79 / invested_capital, 4)  # 21% tax rate
+                else:
+                    base["roic"] = None
+            except:
+                base["roic"] = None
+
+            # ── Insider Activity (net buys in last 90 days) ───────────────────
+            try:
+                insider_txns = ticker.insider_transactions
+                if insider_txns is not None and not insider_txns.empty:
+                    recent = insider_txns.head(20)  # Recent transactions
+                    buys = recent[recent['Text'].str.contains('Purchase|Buy|Acquisition', case=False, na=False)].shape[0]
+                    sells = recent[recent['Text'].str.contains('Sale|Sell|Disposition', case=False, na=False)].shape[0]
+                    base["insider_net_buys"] = buys - sells
+                else:
+                    base["insider_net_buys"] = 0
+            except:
+                base["insider_net_buys"] = 0
+
+            # ── Short Interest ─────────────────────────────────────────────────
+            base["short_ratio"] = info.get("shortRatio")
+            base["short_pct_float"] = info.get("shortPercentOfFloat")
+
+            return base
         except Exception as e:
             return {"error": f"Fundamentals error for {symbol}: {str(e)}"}
+
+    def _calculate_piotroski(self, ticker, info: Dict) -> int:
+        """Calculate Piotroski F-Score (0-9) from Yahoo Finance data."""
+        score = 0
+        try:
+            # 1. Positive ROA
+            net_income = info.get("netIncomeToCommon", 0) or 0
+            total_assets = info.get("totalAssets", 1) or 1
+            roa = net_income / total_assets
+            if roa > 0: score += 1
+
+            # 2. Positive operating cash flow
+            operating_cf = info.get("operatingCashflow", 0) or 0
+            if operating_cf > 0: score += 1
+
+            # 3. ROA improving (use returnOnAssets if available)
+            roe_current = info.get("returnOnAssets")
+            if roe_current and roe_current > 0:
+                score += 1  # Simplified: current positive = pass
+
+            # 4. Accruals: Operating CF > Net Income (quality of earnings)
+            if operating_cf > net_income: score += 1
+
+            # 5. Leverage decreasing (D/E < 1.0 = reasonable)
+            debt_equity = info.get("debtToEquity")
+            if debt_equity is not None and debt_equity < 100:  # Yahoo reports as percentage
+                score += 1
+
+            # 6. Current ratio > 1 (liquidity)
+            current_ratio = info.get("currentRatio")
+            if current_ratio is not None and current_ratio > 1.0: score += 1
+
+            # 7. No dilution (shares outstanding not growing significantly)
+            shares = info.get("sharesOutstanding", 0)
+            float_shares = info.get("floatShares", 0)
+            if shares and float_shares and float_shares / shares > 0.85:
+                score += 1  # High float ratio = low dilution risk
+
+            # 8. Gross margin positive
+            gross_margin = info.get("grossMargins")
+            if gross_margin is not None and gross_margin > 0: score += 1
+
+            # 9. Asset turnover (revenue / total assets)
+            revenue = info.get("totalRevenue", 0) or 0
+            if total_assets > 0 and revenue / total_assets > 0.3:
+                score += 1
+
+        except Exception as e:
+            print(f"Piotroski calc error: {e}")
+
+        return score
     
     def _get_news(self, symbol: str) -> List[Dict]:
         """Fetch latest news for sentiment analysis (Filtered for high relevance)"""
@@ -252,7 +369,7 @@ class RecommendationEngine:
             return "Portfolio stats unavailable."
 
     def _get_market_regime(self) -> Dict:
-        """Enhanced market regime: SPY trend + VIX level for a richer picture."""
+        """Enhanced market regime: SPY trend + VIX + breadth + credit spread."""
         try:
             spy_hist = yf.Ticker("SPY").history(period="6mo")
             current = spy_hist["Close"].iloc[-1]
@@ -272,7 +389,34 @@ class RecommendationEngine:
             else:
                 trend = "SIDEWAYS"
 
-            # Regime multiplier used in scoring
+            # ── NEW: Market Breadth (RSP/SPY ratio) ──────────────────────
+            # RSP = equal-weight S&P 500. If RSP lags SPY, only mega-caps are leading.
+            breadth = "BROAD"
+            try:
+                rsp_hist = yf.Ticker("RSP").history(period="1mo")["Close"]
+                spy_1mo = yf.Ticker("SPY").history(period="1mo")["Close"]
+                if len(rsp_hist) >= 2 and len(spy_1mo) >= 2:
+                    rsp_ret = rsp_hist.iloc[-1] / rsp_hist.iloc[0]
+                    spy_ret = spy_1mo.iloc[-1] / spy_1mo.iloc[0]
+                    breadth_ratio = rsp_ret / spy_ret
+                    breadth = "BROAD" if breadth_ratio > 0.98 else "NARROW"
+            except:
+                breadth = "UNKNOWN"
+
+            # ── NEW: Credit Spread (HYG/LQD ratio) ──────────────────────
+            # HYG = high-yield bonds, LQD = investment-grade. Rising ratio = risk appetite.
+            credit = "NEUTRAL"
+            try:
+                hyg_hist = yf.Ticker("HYG").history(period="1mo")["Close"]
+                lqd_hist = yf.Ticker("LQD").history(period="1mo")["Close"]
+                if len(hyg_hist) >= 2 and len(lqd_hist) >= 2:
+                    credit_now = hyg_hist.iloc[-1] / lqd_hist.iloc[-1]
+                    credit_start = hyg_hist.iloc[0] / lqd_hist.iloc[0]
+                    credit = "RISK_ON" if credit_now > credit_start else "RISK_OFF"
+            except:
+                credit = "NEUTRAL"
+
+            # ── Composite Regime Multiplier ──────────────────────────────
             if trend == "BULL" and vix < 20:
                 multiplier = 1.0
             elif trend == "BULL" and vix < 25:
@@ -284,9 +428,20 @@ class RecommendationEngine:
             else:
                 multiplier = 0.75
 
-            return {"trend": trend, "vix": round(vix, 1), "multiplier": multiplier}
+            # Breadth adjustment: narrow rally = lower confidence
+            if breadth == "NARROW" and trend == "BULL":
+                multiplier *= 0.85  # Reduce confidence in narrow bull markets
+
+            # Credit spread adjustment
+            if credit == "RISK_OFF" and trend != "BEAR":
+                multiplier *= 0.90  # Credit markets flagging caution
+
+            return {
+                "trend": trend, "vix": round(vix, 1), "multiplier": round(multiplier, 3),
+                "breadth": breadth, "credit": credit
+            }
         except:
-            return {"trend": "SIDEWAYS", "vix": 20.0, "multiplier": 0.75}
+            return {"trend": "SIDEWAYS", "vix": 20.0, "multiplier": 0.75, "breadth": "UNKNOWN", "credit": "NEUTRAL"}
 
     # Sector ETF mapping for sector-relative strength
     SECTOR_ETF_MAP = {
@@ -382,9 +537,14 @@ class RecommendationEngine:
             bb_width_series = (bb_upper - bb_lower) / bb_mid
             bb_squeeze = bool(bb_width <= bb_width_series.tail(126).min() * 1.05)
 
-            # ── Volume: Ratio + OBV + OBV Divergence ─────────────────────────
+            # ── Volume: Ratio + Percentile + OBV + OBV Divergence ────────────
             avg_vol   = volume.tail(20).mean()
             vol_ratio = float(volume.iloc[-1]) / avg_vol if avg_vol > 0 else 1.0
+
+            # Volume percentile: where today's volume ranks in last 60 days
+            vol_60 = volume.tail(60)
+            today_vol = float(volume.iloc[-1])
+            vol_percentile = float((vol_60 < today_vol).sum() / len(vol_60) * 100) if len(vol_60) > 0 else 50.0
 
             obv = (volume * close.diff().apply(lambda x: 1 if x > 0 else (-1 if x < 0 else 0))).cumsum()
             obv_sma20 = obv.rolling(20).mean()
@@ -456,6 +616,7 @@ class RecommendationEngine:
                 "fib_levels": fib_levels, "near_fib": near_fib,
                 # Volume / Conviction
                 "volume_ratio": vol_ratio,
+                "volume_percentile": round(vol_percentile, 1),
                 "obv_rising": obv_rising, "obv_divergence": obv_divergence,
                 # Relative Strength
                 "rs_current": rs_info.get("rs_current"),
@@ -490,16 +651,16 @@ class RecommendationEngine:
             return {}
     
     def _score_fundamentals(self, fund: Dict) -> int:
-        """Score fundamentals 0-13 using dynamic sector-aware thresholds"""
+        """Score fundamentals 0-18 using dynamic sector-aware thresholds + quality overlays"""
         if fund.get("quote_type") == "ETF":
-            return 10  # Auto-pass fundamentals for ETFs so technicals drive the entire score
+            return 14  # Auto-pass fundamentals for ETFs so technicals drive the entire score
             
         revenue_growth = fund.get("revenue_growth") or 0
         pe = fund.get("pe")
         
         # Hyper-Growth Multi-Bagger Bypass
         if revenue_growth > 0.25 and (pe is None or pe < 0 or pe > 50):
-            return 11  # Auto-pass fundamentals due to explosive growth characteristics
+            return 15  # Auto-pass fundamentals due to explosive growth characteristics
 
         score = 0
         sector = fund.get("sector", "Unknown")
@@ -533,18 +694,57 @@ class RecommendationEngine:
         fcf = fund.get("fcf")
         if fcf is not None and fcf > 0:
             score += 1
-        
-        # Technical
-        score += 3  # Will be refined with technical
+
+        # ── NEW: Piotroski F-Score quality overlay ────────────────────────
+        piotroski = fund.get("piotroski_score", 5)
+        if piotroski >= 7:
+            score += 2   # Strong financial health
+        elif piotroski <= 3:
+            score -= 2   # Weak financials — red flag
+
+        # ── NEW: Earnings Quality (Accruals) ─────────────────────────────
+        accruals = fund.get("accruals_ratio")
+        if accruals is not None:
+            if abs(accruals) < 0.05:
+                score += 1   # Quality earnings backed by cash flow
+            elif accruals > 0.10:
+                score -= 1   # Aggressive accounting — earnings may not be real
+
+        # ── NEW: ROIC (Capital Allocation) ───────────────────────────────
+        roic = fund.get("roic")
+        if roic is not None:
+            if roic > 0.15:
+                score += 2   # Capital compounder
+            elif roic > 0.10:
+                score += 1   # Acceptable return on capital
+
+        # ── NEW: Insider Activity ────────────────────────────────────────
+        insider_net = fund.get("insider_net_buys", 0)
+        if insider_net > 0:
+            score += 1   # Insiders are buying — skin-in-the-game
+        elif insider_net < -3:
+            score -= 1   # Heavy insider selling
+
+        # ── NEW: Short Interest Risk Flag ────────────────────────────────
+        short_pct = fund.get("short_pct_float")
+        if short_pct is not None and short_pct > 0.15:
+            score -= 1   # High short interest = elevated risk
+
+        # Technical base (will be refined with technical scoring)
+        score += 3
         
         return score
     
     def _score_technicals(self, tech: Dict, regime: Dict = None) -> float:
-        """Expert-grade multi-layer scoring: each layer -2 to +2, multiplied by regime factor.
-        Final range: -8 to +8  →  mapped to signal."""
+        """Expert-grade multi-layer scoring using learned weights from feedback loop.
+        Each layer -2 to +2, weighted by calibrated coefficients, multiplied by regime factor.
+        Final range: variable  →  mapped to signal."""
         if regime is None:
             regime = {"trend": "SIDEWAYS", "vix": 20.0, "multiplier": 0.75}
         regime_mult = regime.get("multiplier", 0.75)
+
+        # Load learned weights
+        w = self._layer_weights
 
         # ── Layer 1: Trend ──────────────────────────────────────────────────
         l1 = 0
@@ -552,6 +752,11 @@ class RecommendationEngine:
         if tech.get("above_sma200"): l1 += 1
         # Weekly timeframe alignment: daily BUY with weekly below SMA50 = penalty
         if tech.get("weekly_above_sma50") is False: l1 -= 1
+        # NEW: 52-week high proximity (within 5% of 52W high = breakout territory)
+        current = tech.get("current_price", 0)
+        high52 = tech.get("high_52w", 0)
+        if high52 > 0 and current > 0 and (current / high52) > 0.95:
+            l1 += 1  # Near 52W high — momentum breakout
         l1 = max(-2, min(2, l1))
 
         # ── Layer 2: Momentum ───────────────────────────────────────────────
@@ -580,8 +785,11 @@ class RecommendationEngine:
         # ── Layer 4: Volume / Conviction ────────────────────────────────────
         l4 = 0
         vol_ratio = tech.get("volume_ratio", 1.0)
-        if vol_ratio > 1.2:  l4 += 1
-        elif vol_ratio < 0.7: l4 -= 1
+        # NEW: Volume percentile (more robust than raw ratio)
+        vol_percentile = tech.get("volume_percentile", 50)
+        if vol_percentile > 90:   l4 += 2   # Top-decile volume — institutional interest
+        elif vol_ratio > 1.2:     l4 += 1
+        elif vol_ratio < 0.7:     l4 -= 1
         if tech.get("obv_rising"):      l4 += 1   # Institutions accumulating
         if tech.get("obv_divergence"): l4 -= 2   # Fake move — institutional exit
         l4 = max(-2, min(2, l4))
@@ -604,8 +812,23 @@ class RecommendationEngine:
         if tech.get("earnings_watch_only"): l6 -= 2  # Earnings within 5 days
         l6 = max(-2, min(2, l6))
 
-        raw_score = l1 + l2 + l3 + l4 + l5 + l6   # range -12 to +12
+        # ── Weighted sum using learned weights ──────────────────────────────
+        raw_score = (
+            l1 * w.get("w_trend", 1.0) +
+            l2 * w.get("w_momentum", 1.0) +
+            l3 * w.get("w_volatility", 1.0) +
+            l4 * w.get("w_volume", 1.0) +
+            l5 * w.get("w_rs", 1.0) +
+            l6 * w.get("w_guards", 1.0)
+        )
         final_score = round(raw_score * regime_mult, 2)
+
+        # Persist layer snapshot for feedback loop training
+        tech["_layer_snapshot"] = {
+            "l_trend": l1, "l_momentum": l2, "l_volatility": l3,
+            "l_volume": l4, "l_rs": l5, "l_guards": l6,
+            "regime_mult": regime_mult, "raw_score": raw_score, "final_score": final_score
+        }
 
         # Map to legacy 0-5 int for backward-compatibility with DB/UI
         # Strong BUY (>=5) → 5, BUY (3-4) → 4, HOLD → 3, WEAK → 1-2, AVOID → 0
@@ -654,22 +877,44 @@ class RecommendationEngine:
         sect_rs = tech.get("sector_rs")
         sect_rs_note = f"{sect_rs:+.1f}% vs sector ETF" if sect_rs is not None else "N/A"
 
+        # Piotroski & quality notes
+        piotroski = fund.get("piotroski_score", "N/A")
+        accruals = fund.get("accruals_ratio", "N/A")
+        roic = fund.get("roic", "N/A")
+        insider_net = fund.get("insider_net_buys", 0)
+        insider_note = f"Net insider {'buys' if insider_net > 0 else 'sells'}: {abs(insider_net)}" if insider_net != 0 else "No recent insider activity"
+        short_pct = fund.get("short_pct_float")
+        short_note = f"{short_pct*100:.1f}% of float" if short_pct else "N/A"
+
+        # 52W proximity
+        pct_from_high = round((tech.get("current_price", 0) / tech.get("high_52w", 1) * 100), 1) if tech.get("high_52w") else "N/A"
+
+        # Regime details
+        breadth = regime.get("breadth", "UNKNOWN")
+        credit = regime.get("credit", "NEUTRAL")
+
+        # Layer weights info
+        weight_source = self._layer_weights.get("source", "default")
+        weight_note = f"(Source: {weight_source})" if weight_source == "learned" else "(Equal weights — awaiting calibration data)"
+
         return f"""
 Analyze {symbol} and provide a precise recommendation. Use ALL data below.
 {earnings_note}
 
-FUNDAMENTALS — Score: {fund_score}/13
+FUNDAMENTALS — Score: {fund_score}/18
 - Sector: {fund.get('sector', 'Unknown')}
 - ROE: {fund.get('roe', 'N/A')} | P/E: {fund.get('pe', 'N/A')} | PEG: {fund.get('peg', 'N/A')}
 - D/E: {fund.get('debt_equity', 'N/A')} | Revenue growth: {fund.get('revenue_growth', 'N/A')}
 - Profit margin: {fund.get('profit_margin', 'N/A')}
+- Piotroski F-Score: {piotroski}/9 | Accruals Ratio: {accruals} | ROIC: {roic}
+- Insider Activity: {insider_note} | Short Interest: {short_note}
 
-TECHNICAL SNAPSHOT — Score: {tech_score}/5 (Raw: {tech.get('_raw_score', 'N/A')})
-• Price:        ${tech.get('current_price', 0):.2f}
+TECHNICAL SNAPSHOT — Score: {tech_score}/5 (Raw: {tech.get('_raw_score', 'N/A')}) {weight_note}
+• Price:        ${tech.get('current_price', 0):.2f}  ({pct_from_high}% of 52W high)
 • SMA50/200:    ${tech.get('sma_50', 0):.2f} / ${tech.get('sma_200') or 0:.2f}  (Weekly alignment: {weekly_align})
 • RSI(14):      {tech.get('rsi', 0):.1f}  {rsi_div_note}
 • MACD:         {macd_desc}  (histogram={tech.get('macd_histogram',0):.3f}, slope={tech.get('macd_slope',0):.3f})
-• Volume:       {tech.get('volume_ratio',0):.2f}x 20-day avg  |  {obv_note}
+• Volume:       {tech.get('volume_ratio',0):.2f}x 20-day avg  (Percentile: {tech.get('volume_percentile', 50):.0f}/100)  |  {obv_note}
 • Volatility:   {tech.get('volatility',0):.1f}% annualised  |  {atr_stop_note}
 • BB Width:     {tech.get('bb_width',0):.4f}  |  {bb_note}
 • RS vs SPY:    {tech.get('rs_current','N/A')} ({tech.get('rs_trend','N/A')})
@@ -678,7 +923,7 @@ TECHNICAL SNAPSHOT — Score: {tech_score}/5 (Raw: {tech.get('_raw_score', 'N/A'
 • 52W range:    ${tech.get('low_52w',0):.2f} – ${tech.get('high_52w',0):.2f}
 • 1Y return:    {tech.get('change_1y',0):.1f}%
 
-MARKET REGIME: {market_regime}  |  VIX: {vix}
+MARKET REGIME: {market_regime}  |  VIX: {vix}  |  Breadth: {breadth}  |  Credit: {credit}
 OVERALL NEWS MOOD: {market_mood if market_mood else "Neutral/No Data"}
 SENTIMENT TREND (Last 7 Days):
 {chr(10).join([f"- {h['date']}: {h['mood']}" for h in mood_history]) if mood_history else "N/A"}
@@ -694,10 +939,17 @@ NEWS:
 {news_text if news_text else "No recent news found."}
 
 SCORING GUIDE:
-- Layer scores (-2 to +2 each), regime multiplier applied.
+- Layer scores (-2 to +2 each), weighted by learned coefficients, regime multiplier applied.
 - Final score ≥5 = Strong BUY, 3-4 = BUY, 0-2 = HOLD, ≤-1 = AVOID.
 - If OBV divergence or RSI divergence present, reduce conviction by 20.
 - If BB Squeeze active and score ≥3, raise conviction by 10 (breakout setup).
+- Piotroski ≤3: Reduce conviction by 15 (weak balance sheet).
+- Piotroski ≥7: Boost conviction by 10 (strong fundamentals quality).
+- ROIC > 15%: Capital compounder — prioritise for long-term holds.
+- Net insider buying: Boost conviction by 5. Heavy insider selling: Reduce by 10.
+- Short interest > 15%: Flag elevated risk; consider smaller position sizing.
+- NARROW breadth: market rally is concentrated — higher risk for small/mid caps.
+- RISK_OFF credit: Bond market is de-risking — be cautious on new longs.
 - Earnings within 5 days: downgrade any BUY to WATCH.
 - Weekly misaligned: halve confidence on daily BUY signals.
 
@@ -705,6 +957,8 @@ RULES:
 1. SELF-REFLECTION: Review your history. Adapt if previously wrong. Be brutally honest.
 2. CHART PATTERNS: Use PRICE ACTION DIGEST. Call out Double Bottoms, Cup & Handle, Flags, H&S.
 3. Use ATR stop provided — do NOT use 52W Low as stop. That is too wide for tactical entries.
+4. Heavily weight Piotroski and ROIC for fundamental quality assessment.
+5. If short interest > 20% and price > SMA50, flag as potential short squeeze setup.
 
 RESPONSE FORMAT (EXACT):
 RECOMMENDATION: [BUY/SELL/HOLD/WAIT/AVOID]

@@ -51,6 +51,42 @@ with engine.db.get_connection() as conn:
     for col in [" last_alert_type TEXT", " last_price REAL", " last_alert_at TEXT"]:
         try: cursor.execute(f"ALTER TABLE watchlist ADD COLUMN {col}")
         except: pass
+    # New outcome columns for feedback loop
+    for col in [" max_adverse_excursion REAL", " max_favorable_excursion REAL", " days_held INTEGER", 
+                " trailing_stop REAL"]:
+        try: cursor.execute(f"ALTER TABLE outcomes ADD COLUMN {col}")
+        except: pass
+    # Tech layer snapshot (JSON for SQLite, JSONB for Postgres)
+    json_type = "JSONB" if engine.db.is_postgres else "TEXT"
+    try: cursor.execute(f"ALTER TABLE outcomes ADD COLUMN tech_layer_snapshot {json_type}")
+    except: pass
+    # ATR14 column on recommendations (for trailing stop updates)
+    try: cursor.execute("ALTER TABLE recommendations ADD COLUMN atr_stop REAL")
+    except: pass
+    try: cursor.execute("ALTER TABLE recommendations ADD COLUMN atr14 REAL")
+    except: pass
+    # Tech layer snapshot for recommendations table
+    try: cursor.execute(f"ALTER TABLE recommendations ADD COLUMN tech_layer_snapshot {json_type}")
+    except: pass
+    # Create layer_weights table if it doesn't exist
+    pk_type = "SERIAL PRIMARY KEY" if engine.db.is_postgres else "INTEGER PRIMARY KEY AUTOINCREMENT"
+    timestamp_default = "CURRENT_TIMESTAMP" if not engine.db.is_postgres else "NOW()"
+    try:
+        cursor.execute(f"""
+            CREATE TABLE IF NOT EXISTS layer_weights (
+                id {pk_type},
+                trained_at TIMESTAMP DEFAULT {timestamp_default},
+                w_trend REAL DEFAULT 1.0,
+                w_momentum REAL DEFAULT 1.0,
+                w_volatility REAL DEFAULT 1.0,
+                w_volume REAL DEFAULT 1.0,
+                w_rs REAL DEFAULT 1.0,
+                w_guards REAL DEFAULT 1.0,
+                n_samples INTEGER,
+                accuracy REAL
+            )
+        """)
+    except: pass
     if not engine.db.is_postgres:
         conn.commit()
 
@@ -77,6 +113,61 @@ def trigger_analysis(req: AnalysisRequest, background_tasks: BackgroundTasks):
         engine.batch_analyze(symbols, market_mood=mood, mood_history=history)
     background_tasks.add_task(run_analysis, req.symbols)
     return {"status": "success", "message": "Analysis started."}
+
+# ── Signal Calibrator Endpoints ──────────────────────────────────────────
+@app.get("/api/calibrator/weights")
+async def get_calibrator_weights():
+    """View current layer weights (learned or default)."""
+    try:
+        from signal_calibrator import SignalCalibrator
+        calibrator = SignalCalibrator(engine.db)
+        return {"status": "success", "weights": calibrator.get_current_weights()}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+@app.post("/api/calibrator/train")
+async def train_calibrator():
+    """Manually trigger calibrator retraining."""
+    try:
+        from signal_calibrator import SignalCalibrator
+        calibrator = SignalCalibrator(engine.db)
+        result = calibrator.train()
+        return {"status": "success", "result": result}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+@app.get("/api/position-size")
+async def calculate_size(symbol: str, account_value: float = 100000, n_positions: int = 5):
+    """Calculate volatility-adjusted position size for a stock."""
+    try:
+        from position_sizer import calculate_position_size, calculate_correlation_penalty
+        import yfinance as yf
+        ticker = yf.Ticker(symbol)
+        hist = ticker.history(period="3mo")
+        if hist.empty:
+            return {"status": "error", "message": f"No data for {symbol}"}
+        
+        close = hist["Close"]
+        high = hist["High"]
+        low = hist["Low"]
+        import pandas as pd
+        tr = pd.concat([high - low, (high - close.shift()).abs(), (low - close.shift()).abs()], axis=1).max(axis=1)
+        atr14 = float(tr.rolling(14).mean().iloc[-1])
+        annual_vol = float(close.pct_change().std() * (252**0.5) * 100)
+        
+        result = calculate_position_size(
+            account_value=account_value,
+            entry_price=float(close.iloc[-1]),
+            atr14=atr14,
+            annual_volatility=annual_vol,
+            n_positions=n_positions
+        )
+        result["symbol"] = symbol
+        result["atr14"] = round(atr14, 2)
+        result["annual_volatility"] = round(annual_vol, 1)
+        return {"status": "success", "data": result}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
 
 @app.get("/api/news-intelligence")
 async def get_news_intelligence(force_refresh: bool = False):
@@ -112,41 +203,104 @@ async def get_news_intelligence(force_refresh: bool = False):
 
 @app.get("/api/portfolio")
 def get_portfolio():
+    """Get the live managed portfolio state."""
     try:
-        with engine.db.get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
-                SELECT r.symbol, r.recommendation, r.entry_price, r.target_price, r.stop_loss, r.created_at, o.status, r.technical_score
-                FROM recommendations r LEFT JOIN outcomes o ON r.id = o.recommendation_id
-                WHERE r.recommendation = 'BUY' AND (o.status IS NULL OR o.status = 'OPEN')
-                AND r.symbol NOT IN (SELECT symbol FROM watchlist) GROUP BY 1,2,3,4,5,6,7,8 ORDER BY r.created_at DESC
-            """)
-            positions = cursor.fetchall()
-
-        if not positions: return {"status": "success", "data": [], "summary": {}}
-        symbols = [p[0] for p in positions]
-        tickers = yf.Tickers(" ".join(symbols))
-        portfolio_data = []; total_invested = 0; total_current = 0
+        ledger = engine.db.get_active_ledger()
+        state = engine.db.get_fund_state()
         
-        for pos in positions:
-            symbol, action, entry, target, stop, date, status, tech_score = pos
-            if entry is None: continue
-            try: live_price = tickers.tickers[symbol].history(period="1d")["Close"].iloc[-1]
-            except: live_price = entry
+        if not ledger: 
+            return {
+                "status": "success", 
+                "data": [], 
+                "summary": {
+                    "total_invested": 10000.0 - state["cash_balance"],
+                    "total_value": state["cash_balance"],
+                    "total_pnl_pct": 0,
+                    "cash": state["cash_balance"]
+                }
+            }
+            
+        symbols = [p["symbol"] for p in ledger]
+        tickers = yf.Tickers(" ".join(symbols))
+        
+        portfolio_data = []
+        total_market_value = 0
+        total_cost = 0
+        
+        for p in ledger:
+            symbol = p["symbol"]
+            entry = p["avg_entry_price"]
+            shares = p["shares"]
+            cost = p["total_cost"]
+            
+            try: 
+                live_price = tickers.tickers[symbol].fast_info['lastPrice']
+            except: 
+                try: live_price = tickers.tickers[symbol].history(period="1d")["Close"].iloc[-1]
+                except: live_price = entry
+                
             pnl_pct = ((live_price - entry) / entry) * 100
-            total_invested += 10000; total_current += (10000 / entry * live_price)
+            current_value = shares * live_price
+            
+            total_market_value += current_value
+            total_cost += cost
+            
+            # Get latest recommendation context
+            with engine.db.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT technical_score, target_price, stop_loss FROM recommendations WHERE symbol = %s ORDER BY created_at DESC LIMIT 1", (symbol,))
+                row = cursor.fetchone()
+                tech_score = row[0] if row else 0
+                target = row[1] if row else entry * 1.2
+                stop = row[2] if row else entry * 0.9
             
             ai_verdict = "✅ HOLD"
-            if tech_score >= 6: ai_verdict = "🔥 BUY MORE"
-            elif tech_score < -2: ai_verdict = "⚠️ TRIM"
+            if tech_score >= 6: ai_verdict = "🔥 ACCUMULATE"
+            elif tech_score < -2: ai_verdict = "⚠️ TRIM/SELL"
+            
+            target_dist = ((target - live_price) / live_price) * 100
+            stop_dist = ((live_price - stop) / live_price) * 100
             
             portfolio_data.append({
-                "symbol": symbol, "entry": entry, "live_price": live_price, "pnl_pct": pnl_pct,
-                "target": target, "stop": stop, "verdict": ai_verdict, "tech_score": tech_score
+                "symbol": symbol, 
+                "shares": round(shares, 2),
+                "entry": round(entry, 2), 
+                "live_price": round(live_price, 2), 
+                "pnl_pct": round(pnl_pct, 2),
+                "target_dist": round(target_dist, 2),
+                "stop_dist": round(stop_dist, 2),
+                "tech_score": tech_score
             })
             
-        return {"status": "success", "data": portfolio_data, "summary": {"total_pnl_pct": ((total_current - total_invested)/total_invested)*100, "total_invested": total_invested, "total_value": total_current}}
+        total_value = state["cash_balance"] + total_market_value
+        total_pnl_pct = ((total_value - 10000.0) / 10000.0) * 100
+            
+        return {
+            "status": "success", 
+            "data": portfolio_data, 
+            "summary": {
+                "total_pnl_pct": round(total_pnl_pct, 2), 
+                "total_invested": round(total_cost, 2), 
+                "total_value": round(total_value, 2),
+                "cash": round(state["cash_balance"], 2)
+            }
+        }
     except Exception as e: return {"status": "error", "message": str(e)}
+
+@app.post("/api/fund/sync")
+def sync_fund(background_tasks: BackgroundTasks):
+    """Trigger the auto-trader to sync equity and process new trades."""
+    def run_sync():
+        from auto_trader import AutoTrader
+        trader = AutoTrader(engine.db)
+        trader.sync_portfolio_equity()
+        trader.manage_existing_positions()
+        trader.process_new_recommendations()
+        trader.sync_portfolio_equity()
+    
+    background_tasks.add_task(run_sync)
+    return {"status": "success", "message": "Fund sync started in background."}
+
 
 @app.get("/api/watchlist")
 def get_watchlist():
@@ -266,6 +420,18 @@ async def task_daily_analysis():
                         watchlist_alerts.append(f"🔥 <b>{ws}</b>: Near entry at ${curr:.2f}")
         
         if watchlist_alerts: send_telegram_alert("⭐ <b>WATCHLIST HOT ZONE</b>\n" + "\n".join(watchlist_alerts))
+        
+        # 4. Autonomous Trading (Final step)
+        try:
+            from auto_trader import AutoTrader
+            trader = AutoTrader(engine.db)
+            trader.sync_portfolio_equity()
+            trader.manage_existing_positions()
+            trader.process_new_recommendations()
+            trader.sync_portfolio_equity()
+        except Exception as e:
+            print(f"Trading Error: {e}")
+            
         print(f"[{now}] Daily Automation Completed.")
     except Exception as e: 
         print(f"Daily Error: {e}")
