@@ -220,7 +220,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 data.data.forEach(item => {
                     const tr = document.createElement('tr');
-                    tr.innerHTML = `<td><strong>${item.symbol}</strong></td><td>$${item.entry.toFixed(2)}</td><td>$${item.live_price.toFixed(2)}</td><td style="color:${item.pnl_pct >= 0 ? 'var(--success)' : 'var(--danger)'};font-weight:bold;">${item.pnl_pct.toFixed(2)}%</td><td><span class="badge hold">${item.verdict}</span></td><td><span style="font-size:11px;color:var(--text-muted);">${item.alert}</span></td><td>${item.tech_score}</td><td><div class="sparkline-placeholder"></div></td>`;
+                    tr.innerHTML = `
+                        <td><strong>${item.symbol}</strong></td>
+                        <td>${item.shares}</td>
+                        <td>$${item.entry.toFixed(2)}</td>
+                        <td>$${item.live_price.toFixed(2)}</td>
+                        <td style="color:${item.pnl_pct >= 0 ? 'var(--success)' : 'var(--danger)'};font-weight:bold;">${item.pnl_pct.toFixed(2)}%</td>
+                        <td style="opacity:0.8; font-size:12px;">${item.target_dist}%</td>
+                        <td style="opacity:0.8; font-size:12px;">${item.stop_dist}%</td>
+                        <td><span class="badge ${item.tech_score > 3 ? 'buy' : 'hold'}">${item.tech_score}</span></td>
+                    `;
                     portTbody.appendChild(tr);
                 });
             }
