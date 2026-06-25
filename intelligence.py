@@ -119,14 +119,14 @@ class NewsIntelligence:
         }}
         """
 
-        response = self.client.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=2000,
-            system="You are a Market Intelligence AI.",
-            messages=[{"role": "user", "content": prompt}]
-        )
-        
         try:
+            response = self.client.messages.create(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=2000,
+                system="You are a Market Intelligence AI.",
+                messages=[{"role": "user", "content": prompt}]
+            )
+            
             # Extract JSON from response
             text = response.content[0].text
             # Basic JSON extraction if there is fluff
@@ -134,7 +134,12 @@ class NewsIntelligence:
             end = text.rfind('}') + 1
             return json.loads(text[start:end])
         except Exception as e:
-            return {"error": f"Failed to parse AI response: {str(e)}", "raw": response.content[0].text}
+            return {
+                "market_mood": "Neutral",
+                "top_sectors": [],
+                "alerts": [],
+                "summary_for_telegram": f"📰 <b>Morning News Intelligence</b>\n\n<b>Market Mood:</b> Neutral\n\n<i>Note: AI analysis temporarily unavailable ({str(e)}).</i>"
+            }
 
     def run_daily_scan(self) -> Dict:
         news = self.fetch_market_news()

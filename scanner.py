@@ -44,7 +44,7 @@ class MarketScanner:
             batch = tickers[i:i+batch_size]
             print(f"  Downloading activity for batch {i//batch_size + 1} ({len(batch)} tickers)...")
             try:
-                data = yf.download(batch, period="1d", group_by='ticker', progress=False)
+                data = yf.download(batch, period="1d", group_by='ticker', progress=False, threads=False)
                 for ticker in batch:
                     try:
                         # For multi-index data from yf.download(batch)
@@ -121,7 +121,7 @@ class MarketScanner:
         
         # 3. Momentum Scan (The "Math Hunter")
         update_status("Running Momentum Hunter (60d trend)...")
-        momentum_data = yf.download(active_universe, period="60d", group_by='ticker', progress=False)
+        momentum_data = yf.download(active_universe, period="60d", group_by='ticker', progress=False, threads=False)
         
         candidates = []
         for ticker in active_universe:
@@ -233,7 +233,7 @@ class MarketScanner:
         
         # 2. Bulk Fetch Current OHLC for Gap Analysis
         update_status(f"Analysing gap potential for {len(sp600_tickers)} leaders...")
-        momentum_data = yf.download(sp600_tickers, period="2d", interval="1d", group_by='ticker', threads=True)
+        momentum_data = yf.download(sp600_tickers, period="2d", interval="1d", group_by='ticker', threads=False)
         
         gappers = []
         for ticker in sp600_tickers:
