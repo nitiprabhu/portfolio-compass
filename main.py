@@ -401,8 +401,11 @@ async def task_daily_analysis():
         if "summary_for_telegram" in intel: send_telegram_alert(intel["summary_for_telegram"])
         
         # 2. Stock Deep-Dive
+        analyzed_recs = {}
         for s in symbols:
-            engine.analyze_stock(s, bypass_cache=True, save_to_db=True, market_mood=market_mood)
+            rec = engine.analyze_stock(s, bypass_cache=True, save_to_db=True, market_mood=market_mood)
+            if rec:
+                analyzed_recs[s] = rec
             await asyncio.sleep(5)
         
         # 3. Watchlist Review
@@ -412,7 +415,9 @@ async def task_daily_analysis():
             cursor.execute("SELECT symbol FROM watchlist")
             for ws_row in cursor.fetchall():
                 ws = ws_row[0]
-                rec = engine.analyze_stock(ws, bypass_cache=True, save_to_db=True, market_mood=market_mood)
+                rec = analyzed_recs.get(ws)
+                if not rec:
+                    rec = engine.analyze_stock(ws, bypass_cache=True, save_to_db=True, market_mood=market_mood)
                 if rec and rec['recommendation'] == 'BUY':
                     t = yf.Ticker(ws)
                     curr = t.info.get('regularMarketPrice') or rec['entry_price']
@@ -471,6 +476,28 @@ def send_telegram_alert(message: str):
     if token and chat_id:
         try: httpx.post(f"https://api.telegram.org/bot{token}/sendMessage", json={"chat_id": chat_id, "text": message, "parse_mode": "HTML"})
         except Exception as e: print(f"Telegram failed: {e}")
+
+# ── IndMoney & Multibagger Screener Endpoints ──
+
+@app.get("/api/indmoney/suggestions")
+async def get_indmoney_suggestions(token: Optional[str] = None):
+    try:
+        from indmoney_client import IndMoneyClient
+        client = IndMoneyClient(auth_token=token)
+        holdings = await client.get_holdings()
+        suggestions = await client.generate_portfolio_suggestions(holdings)
+        return {"status": "success", "data": suggestions}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+@app.post("/api/screener/multibagger")
+async def run_multibagger_screener(background_tasks: BackgroundTasks):
+    def job():
+        from multibagger_screener import MultibaggerScreener
+        screener = MultibaggerScreener()
+        screener.run_screener(limit=3)
+    background_tasks.add_task(job)
+    return {"status": "success", "message": "Multibagger fundamental screener started in background."}
 
 app.mount("/", StaticFiles(directory="static", html=True), name="static")
 

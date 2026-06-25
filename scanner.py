@@ -141,9 +141,24 @@ class MarketScanner:
                 current_vol = hist['Volume'].iloc[-1]
                 vol_ratio = current_vol / avg_vol if avg_vol > 0 else 1.0
                 
-                # Score based on Volume Surge and 5-day Momentum
+                # Bollinger Band Squeeze Calculation (reward tighter consolidation)
+                std_20 = hist['Close'].tail(20).std()
+                sma_20 = hist['Close'].tail(20).mean()
+                bb_width = (std_20 / sma_20) if sma_20 > 0 else 0.1
+                
+                # Squeeze score: higher is better (more squeezed)
+                squeeze_score = max(0.0, 1.0 - bb_width * 3.0)
+                
+                # Extension penalty: penalize stocks >10% above SMA50
+                pct_above_sma50 = (current_price - sma50) / sma50 if sma50 > 0 else 0
+                extension_penalty = 1.0
+                if pct_above_sma50 > 0.10:
+                    extension_penalty = max(0.1, 1.0 - (pct_above_sma50 - 0.10) * 3.0)
+                
+                # Scoring: Combine momentum, volume surge, and BB squeeze, then apply extension penalty
                 ret_5d = (current_price - hist['Close'].iloc[-5]) / hist['Close'].iloc[-5] if len(hist) > 5 else 0
-                score = (ret_5d * 0.6) + (vol_ratio * 0.4)
+                base_score = (ret_5d * 0.4) + (vol_ratio * 0.3) + (squeeze_score * 0.3)
+                score = base_score * extension_penalty
                 
                 candidates.append({"symbol": ticker, "score": score})
             except:
@@ -157,6 +172,20 @@ class MarketScanner:
         update_status(f"Top 10 candidates identified: {[p['symbol'] for p in top_picks]}")
         for pick in top_picks:
             symbol = pick['symbol']
+            
+            # Fix 3: Quality gate before calling AI
+            try:
+                fund = self.engine._get_fundamentals(symbol)
+                quote_type = fund.get("quote_type", "EQUITY")
+                if quote_type == "EQUITY":
+                    piotroski = fund.get("piotroski_score", 0)
+                    rev_growth = fund.get("revenue_growth") or 0.0
+                    if piotroski < 5 or rev_growth <= 0:
+                        update_status(f"  ❌ Skipped {symbol} due to Quality Gate: Piotroski={piotroski}/9, Rev Growth={rev_growth*100:.1f}%")
+                        continue
+            except Exception as e:
+                pass
+
             update_status(f"  AI Validating: {symbol}...")
             # Run the full AI engine (with Visual Intelligence) - Now saving to DB for AutoTrader
             rec = self.engine.analyze_stock(symbol, bypass_cache=True, save_to_db=True)
@@ -189,6 +218,13 @@ class MarketScanner:
         def update_status(msg):
             print(f"[Pre-Market Scanner] {msg}")
             if progress_callback: progress_callback(msg)
+
+        # Fix 7: Premarket Regime Gate
+        regime_check = self._should_scan()
+        if not regime_check["scan"]:
+            reason = regime_check.get("reason", "Market conditions unfavorable.")
+            update_status(f"⚠️ PRE-MARKET SCAN SKIPPED: {reason}")
+            return []
 
         update_status("Starting Pre-Market Gap Discovery...")
         
@@ -232,6 +268,20 @@ class MarketScanner:
         update_status(f"AI Deep-Dive for {len(top_gappers)} top gappers...")
         for pick in top_gappers:
             symbol = pick['symbol']
+            
+            # Fix 3: Quality gate before calling AI in pre-market
+            try:
+                fund = self.engine._get_fundamentals(symbol)
+                quote_type = fund.get("quote_type", "EQUITY")
+                if quote_type == "EQUITY":
+                    piotroski = fund.get("piotroski_score", 0)
+                    rev_growth = fund.get("revenue_growth") or 0.0
+                    if piotroski < 5 or rev_growth <= 0:
+                        update_status(f"  ❌ Skipped {symbol} due to Quality Gate: Piotroski={piotroski}/9, Rev Growth={rev_growth*100:.1f}%")
+                        continue
+            except:
+                pass
+
             update_status(f"  Analysing Gapper: {symbol} (+{pick['gap']:.1f}% Gap)...")
             # Analysing Gapper - Now saving to DB for AutoTrader
             rec = self.engine.analyze_stock(symbol, bypass_cache=True, save_to_db=True)

@@ -1,6 +1,6 @@
 import yfinance as yf
 from database import RecommendationDB
-from position_sizer import calculate_position_size
+from position_sizer import calculate_position_size, calculate_correlation_penalty
 from datetime import datetime
 
 class AutoTrader:
@@ -100,12 +100,19 @@ class AutoTrader:
                 entry = r.get("entry_price") or close.iloc[-1]
                 print(f"DEBUG: {symbol} - Entry: {entry}, ATR14: {atr14}, Vol: {vol:.2f}%")
                 
+                correlation_penalty = calculate_correlation_penalty(
+                    new_symbol=symbol,
+                    existing_symbols=held_symbols
+                )
+                print(f"DEBUG: {symbol} - Correlation penalty: {correlation_penalty}")
+
                 sizing = calculate_position_size(
                     account_value=total_equity,
                     entry_price=entry,
                     atr14=atr14,
                     annual_volatility=vol,
-                    n_positions=5
+                    n_positions=5,
+                    correlation_penalty=correlation_penalty
                 )
                 
                 shares = sizing["shares"]

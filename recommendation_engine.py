@@ -67,7 +67,8 @@ class RecommendationEngine:
             }
     
     def analyze_stock(self, symbol: str, bypass_cache: bool = False, save_to_db: bool = True, 
-                     market_mood: Optional[str] = None, mood_history: Optional[List[Dict]] = None) -> Optional[Dict]:
+                     market_mood: Optional[str] = None, mood_history: Optional[List[Dict]] = None,
+                     mode: str = "default") -> Optional[Dict]:
         """
         Analyze a stock and return structured recommendation
         
@@ -124,10 +125,13 @@ class RecommendationEngine:
 
             # 4. Ask Claude for recommendation
             prompt = self._build_prompt(symbol, fundamentals, technicals, fund_score, tech_score,
-                                        regime, news, history, port_stats, market_mood, mood_history)
+                                        regime, news, history, port_stats, market_mood, mood_history, mode)
+            
+            # Select model based on mode
+            model_to_use = "claude-3-5-sonnet-20241022" if mode == "multibagger" else "claude-haiku-4-5-20251001"
             
             response = self.client.messages.create(
-                model="claude-haiku-4-5-20251001",
+                model=model_to_use,
                 max_tokens=1500,
                 messages=[{"role": "user", "content": prompt}]
             )
@@ -135,8 +139,11 @@ class RecommendationEngine:
             # Log Usage for Cost Analysis
             input_tokens = response.usage.input_tokens
             output_tokens = response.usage.output_tokens
-            # Claude Haiku costs: $0.25 / M input, $1.25 / M output
-            cost = (input_tokens / 1_000_000 * 0.25) + (output_tokens / 1_000_000 * 1.25)
+            # Sonnet: $3.00/M input, $15.00/M output; Haiku: $0.25/M input, $1.25/M output
+            if model_to_use == "claude-3-5-sonnet-20241022":
+                cost = (input_tokens / 1_000_000 * 3.00) + (output_tokens / 1_000_000 * 15.00)
+            else:
+                cost = (input_tokens / 1_000_000 * 0.25) + (output_tokens / 1_000_000 * 1.25)
             self.db.log_api_usage(response.model, input_tokens, output_tokens, cost)
 
             recommendation_text = response.content[0].text
@@ -657,10 +664,11 @@ class RecommendationEngine:
             
         revenue_growth = fund.get("revenue_growth") or 0
         pe = fund.get("pe")
+        piotroski = fund.get("piotroski_score", 0)
         
-        # Hyper-Growth Multi-Bagger Bypass
-        if revenue_growth > 0.25 and (pe is None or pe < 0 or pe > 50):
-            return 15  # Auto-pass fundamentals due to explosive growth characteristics
+        # Hyper-Growth Multi-Bagger Bypass (requires at least Piotroski >= 4)
+        if revenue_growth > 0.25 and (pe is None or pe < 0 or pe > 50) and piotroski >= 4:
+            return 15  # Auto-pass fundamentals due to explosive growth characteristics + quality guard
 
         score = 0
         sector = fund.get("sector", "Unknown")
@@ -841,8 +849,9 @@ class RecommendationEngine:
         else:                  return 0
     
     def _build_prompt(self, symbol: str, fund: Dict, tech: Dict, fund_score: int, tech_score: int,
-                     regime: Dict, news: List[Dict], history: str, port_stats: str, 
-                     market_mood: Optional[str] = None, mood_history: Optional[List[Dict]] = None) -> str:
+                      regime: Dict, news: List[Dict], history: str, port_stats: str, 
+                      market_mood: Optional[str] = None, mood_history: Optional[List[Dict]] = None,
+                      mode: str = "default") -> str:
         """Build expert-grade prompt using all enhanced indicators."""
         news_text = "\n".join([f"- {n['content']['title']}: {n['content'].get('summary', '')}" for n in news])
         market_regime = regime.get("trend", "SIDEWAYS")
@@ -897,7 +906,7 @@ class RecommendationEngine:
         weight_source = self._layer_weights.get("source", "default")
         weight_note = f"(Source: {weight_source})" if weight_source == "learned" else "(Equal weights — awaiting calibration data)"
 
-        return f"""
+        prompt = f"""
 Analyze {symbol} and provide a precise recommendation. Use ALL data below.
 {earnings_note}
 
@@ -981,6 +990,13 @@ OUTLOOK (1-2 sentences):
 ---
 Be precise, decisive, and tactical. Every word should help the trader act.
 """
+        if mode == "multibagger":
+            prompt += """
+
+⚠️ BEARISH DEVIL'S ADVOCATE RULES (ACTIVE):
+You MUST actively and critically attempt to argue AGAINST the BUY case. Assume this company is a potential "value trap" or that the recent price action/momentum is a speculative pump. Present a strong, convincing bear case in your risks and reasoning. Only recommend BUY/STRONG BUY if the fundamental quality (ROIC, low debt, strong cash flows) and structural advantages (moats) are so overwhelming that the bear case is completely invalidated. Otherwise, default to HOLD or AVOID.
+"""
+        return prompt
 
     def _parse_recommendation(self, symbol: str, text: str, fund_score: int, 
                              tech_score: int, fund: Dict, tech: Dict, news: List[Dict] = None, save_dt: bool = True) -> Dict:

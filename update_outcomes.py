@@ -44,13 +44,37 @@ def update_all_outcomes():
         
         for r in recs:
             symbol = r['symbol']
+            
+            # Calculate days held and parse created_at
             try:
-                # Fetch recent history for MAE/MFE calculation
-                history = tickers.tickers[symbol].history(period="5d")
+                created = r['created_at']
+                if isinstance(created, str):
+                    created_dt = datetime.strptime(created, "%Y-%m-%d %H:%M:%S")
+                else:
+                    created_dt = created
+                days_held = (datetime.now() - created_dt).days
+            except Exception as e:
+                created_dt = datetime.now() - timedelta(days=5)
+                days_held = 5
+                print(f"Error parsing created_at for {symbol}: {e}")
+
+            # Check if outcome exists and check its status to avoid duplicate work / closed records
+            cursor.execute(f"SELECT id, status, peak_price, max_adverse_excursion, max_favorable_excursion, trailing_stop FROM outcomes WHERE recommendation_id = {p}", (r['id'],))
+            row = cursor.fetchone()
+            
+            if row and row.get('status') and row.get('status') not in ('OPEN', None):
+                # Outcome is already finalized (e.g. HIT_TARGET, HIT_STOP, CLOSED_EARLY)
+                continue
+
+            try:
+                # Fetch history from created_dt to today
+                start_date = (created_dt - timedelta(days=1)).strftime("%Y-%m-%d")
+                history = tickers.tickers[symbol].history(start=start_date)
+                if history.empty:
+                    history = tickers.tickers[symbol].history(period="5d")
                 if history.empty: continue
-                curr_price = history["Close"].iloc[-1]
                 
-                # Get high/low from recent history for MAE/MFE
+                curr_price = history["Close"].iloc[-1]
                 recent_high = float(history["High"].max())
                 recent_low = float(history["Low"].min())
             except Exception as e:
@@ -78,20 +102,11 @@ def update_all_outcomes():
                 if target and curr_price <= target: status = "HIT_TARGET"
                 elif stop and curr_price >= stop: status = "HIT_STOP"
             
-            # Calculate days held
-            try:
-                created = r['created_at']
-                if isinstance(created, str):
-                    created = datetime.strptime(created, "%Y-%m-%d %H:%M:%S")
-                days_held = (datetime.now() - created).days
-            except:
-                days_held = 0
+            # Apply time-based auto-close (30 days)
+            if status == "OPEN" and days_held >= 30:
+                status = "CLOSED_EARLY"
 
             # Update outcomes table
-            # Check if exists
-            cursor.execute(f"SELECT id, peak_price, max_adverse_excursion, max_favorable_excursion, trailing_stop FROM outcomes WHERE recommendation_id = {p}", (r['id'],))
-            row = cursor.fetchone()
-            
             now = datetime.now()
             
             if row:
@@ -110,21 +125,21 @@ def update_all_outcomes():
                     mae = max(old_mae, current_mae)
                 else:
                     mae = old_mae
-
+ 
                 # ── MFE: Max Favorable Excursion (best gain from entry) ──
                 if entry and entry > 0 and action == 'BUY':
                     current_mfe = ((recent_high - entry) / entry) * 100  # % above entry
                     mfe = max(old_mfe, current_mfe)
                 else:
                     mfe = old_mfe
-
+ 
                 # ── Trailing ATR Stop: ratchet up, never lower ──
                 trailing_stop = old_trailing_stop
                 if atr14 > 0 and action == 'BUY' and peak > 0:
                     new_trailing_stop = round(peak - 2.0 * atr14, 2)
                     if new_trailing_stop > old_trailing_stop:
                         trailing_stop = new_trailing_stop
-
+ 
                 # Check trailing stop hit
                 if action == 'BUY' and trailing_stop > 0 and curr_price <= trailing_stop and status == "OPEN":
                     status = "HIT_STOP"
@@ -141,13 +156,13 @@ def update_all_outcomes():
                 initial_mae = 0
                 initial_mfe = 0
                 initial_trailing_stop = stop or 0
-
+ 
                 if entry and entry > 0 and action == 'BUY':
                     initial_mae = max(0, ((entry - recent_low) / entry) * 100)
                     initial_mfe = max(0, ((recent_high - entry) / entry) * 100)
                     if atr14 > 0:
                         initial_trailing_stop = max(stop or 0, round(curr_price - 2.0 * atr14, 2))
-
+ 
                 # Pull tech_layer_snapshot from recommendation
                 snapshot = r.get('tech_layer_snapshot')
                 if isinstance(snapshot, str):
@@ -156,7 +171,7 @@ def update_all_outcomes():
                     snapshot = json.dumps(snapshot)
                 else:
                     snapshot = None
-
+ 
                 cursor.execute(f"""
                     INSERT INTO outcomes (recommendation_id, symbol, entry_price, entry_date, current_price, check_date, 
                                           status, return_pct, peak_price, max_adverse_excursion, max_favorable_excursion,
@@ -164,7 +179,7 @@ def update_all_outcomes():
                     VALUES ({p}, {p}, {p}, {p}, {p}, {p}, {p}, {p}, {p}, {p}, {p}, {p}, {p}, {p})
                 """, (r['id'], symbol, entry, r['created_at'], curr_price, now, status, ret_pct, curr_price,
                       initial_mae, initial_mfe, days_held, initial_trailing_stop, snapshot))
-
+ 
         if not db.is_postgres:
             conn.commit()
             
