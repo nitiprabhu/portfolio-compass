@@ -172,8 +172,77 @@ class RecommendationEngine:
 
         
         except Exception as e:
-            print(f"Error analyzing {symbol}: {e}")
-            return None
+            print(f"⚠️ Error analyzing {symbol} (API or logic issue): {e}. Reverting to mathematical fallback scoring...")
+            try:
+                # Calculate recommendation mathematically as fallback
+                f_score = fund_score if 'fund_score' in locals() else 5
+                t_score = tech_score if 'tech_score' in locals() else 3
+                
+                fund_norm = (f_score / 18) * 5
+                combined = (fund_norm * 0.4) + (t_score * 0.6)
+                
+                if combined >= 4.0:
+                    rec_action = "STRONG BUY" if combined >= 4.5 else "BUY"
+                    conviction = int(combined * 20)
+                elif combined >= 2.5:
+                    rec_action = "BUY" if combined >= 3.0 else "HOLD"
+                    conviction = int(combined * 20)
+                elif combined >= 1.5:
+                    rec_action = "WAIT"
+                    conviction = int(combined * 20)
+                else:
+                    rec_action = "AVOID"
+                    conviction = int(combined * 20)
+                
+                current_price = 0
+                if 'technicals' in locals() and isinstance(technicals, dict):
+                    current_price = technicals.get("current_price", 0)
+                if not current_price and 'fundamentals' in locals() and isinstance(fundamentals, dict):
+                    current_price = fundamentals.get("price", 0)
+                if not current_price:
+                    current_price = yf.Ticker(symbol).history(period="1d")["Close"].iloc[-1]
+                
+                atr14 = 0
+                if 'technicals' in locals() and isinstance(technicals, dict):
+                    atr14 = technicals.get("atr14") or 0
+                if not atr14:
+                    atr14 = current_price * 0.02
+                    
+                stop_loss = round(current_price - 2.0 * atr14, 2)
+                target_price = round(current_price + 3.0 * atr14, 2)
+                
+                import json
+                
+                rec = {
+                    "symbol": symbol,
+                    "recommendation": rec_action,
+                    "conviction": conviction,
+                    "entry_price": current_price,
+                    "stop_loss": stop_loss,
+                    "target_price": target_price,
+                    "fundamentals_score": f_score,
+                    "technical_score": t_score,
+                    "reasoning": f"Mathematical Fallback: Claude API failed ({e}). Reverted to rule-based scoring (Fund: {f_score}/18, Tech: {t_score}/5).",
+                    "reasons_json": json.dumps(["Strong technical trend/momentum" if t_score >= 4 else "Moderate technical setups", "Low debt/healthy margins" if f_score >= 10 else "Acceptable fundamental score", "Rule-based tactical entry alignment"]),
+                    "risks_json": json.dumps(["AI qualitative analysis bypassed due to credit limits", "Market regime risk"]),
+                    "outlook": "Mathematical fallback recommendation. Monitor technical trailing stop closely.",
+                    "news_sentiment": 3.0,
+                    "news_json": "[]",
+                    "reflection": "System reverted to deterministic mathematical rules due to API failure.",
+                    "tech_layer_snapshot": json.dumps(technicals) if 'technicals' in locals() and isinstance(technicals, dict) else "{}"
+                }
+                
+                if save_to_db:
+                    self.db.save_recommendation(rec)
+                
+                rec["atr_stop"] = stop_loss
+                rec["atr14"] = atr14
+                rec["tech_layer_snapshot"] = technicals.get("_layer_snapshot") if ('technicals' in locals() and isinstance(technicals, dict) and technicals.get("_layer_snapshot")) else None
+                
+                return rec
+            except Exception as inner_e:
+                print(f"Critical failure in mathematical fallback: {inner_e}")
+                return None
     
     def _get_fundamentals(self, symbol: str) -> Dict:
         """Fetch fundamentals with Piotroski F-Score, accruals, ROIC, insider activity, short interest."""

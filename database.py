@@ -172,6 +172,47 @@ class RecommendationDB:
             if cursor.fetchone()[0] == 0:
                 cursor.execute(f"INSERT INTO fund_state (cash_balance, total_equity) VALUES (10000.0, 10000.0)")
 
+            # Run column migrations to ensure existing tables have all columns
+            migration_columns = [
+                ("outcomes", "peak_price", "REAL"),
+                ("outcomes", "news_sentiment", "INTEGER"),
+                ("outcomes", "news_json", "TEXT"),
+                ("outcomes", "reflection", "TEXT"),
+                ("outcomes", "max_adverse_excursion", "REAL"),
+                ("outcomes", "max_favorable_excursion", "REAL"),
+                ("outcomes", "days_held", "INTEGER"),
+                ("outcomes", "trailing_stop", "REAL"),
+                ("outcomes", "tech_layer_snapshot", "JSONB" if self.is_postgres else "TEXT"),
+                ("recommendations", "atr_stop", "REAL"),
+                ("recommendations", "atr14", "REAL"),
+                ("recommendations", "tech_layer_snapshot", "JSONB" if self.is_postgres else "TEXT"),
+                ("watchlist", "last_alert_type", "TEXT"),
+                ("watchlist", "last_price", "REAL"),
+                ("watchlist", "last_alert_at", "TEXT")
+            ]
+            
+            for table, col, col_type in migration_columns:
+                exists = False
+                try:
+                    if self.is_postgres:
+                        cursor.execute(f"""
+                            SELECT column_name 
+                            FROM information_schema.columns 
+                            WHERE table_name='{table}' AND column_name='{col}'
+                        """)
+                        exists = cursor.fetchone() is not None
+                    else:
+                        cursor.execute(f"PRAGMA table_info({table})")
+                        exists = any(row[1] == col for row in cursor.fetchall())
+                except Exception:
+                    pass
+                
+                if not exists:
+                    try:
+                        cursor.execute(f"ALTER TABLE {table} ADD COLUMN {col} {col_type}")
+                    except Exception:
+                        pass
+
             if not self.is_postgres:
                 conn.commit()
 
