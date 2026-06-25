@@ -213,15 +213,38 @@ class RecommendationEngine:
                 
                 import json
                 
+                class NumpyEncoder(json.JSONEncoder):
+                    def default(self, obj):
+                        try:
+                            import numpy as np
+                            if isinstance(obj, (np.integer, np.floating, np.bool_)):
+                                return obj.item()
+                            elif isinstance(obj, np.ndarray):
+                                return obj.tolist()
+                        except ImportError:
+                            pass
+                        return super(NumpyEncoder, self).default(obj)
+
+                # Ensure all technicals dict values are serialized cleanly using NumpyEncoder
+                sanitized_tech = {}
+                if 'technicals' in locals() and isinstance(technicals, dict):
+                    try:
+                        # Serialize and deserialize with NumpyEncoder to fully sanitize
+                        serialized_tech = json.dumps(technicals, cls=NumpyEncoder)
+                        sanitized_tech = json.loads(serialized_tech)
+                    except Exception as clean_e:
+                        print(f"⚠️ Error sanitizing technicals in fallback: {clean_e}")
+                        sanitized_tech = {}
+
                 rec = {
                     "symbol": symbol,
                     "recommendation": rec_action,
-                    "conviction": conviction,
-                    "entry_price": current_price,
-                    "stop_loss": stop_loss,
-                    "target_price": target_price,
-                    "fundamentals_score": f_score,
-                    "technical_score": t_score,
+                    "conviction": int(conviction),
+                    "entry_price": float(current_price),
+                    "stop_loss": float(stop_loss),
+                    "target_price": float(target_price),
+                    "fundamentals_score": int(f_score),
+                    "technical_score": int(t_score),
                     "reasoning": f"Mathematical Fallback: Claude API failed ({e}). Reverted to rule-based scoring (Fund: {f_score}/18, Tech: {t_score}/5).",
                     "reasons_json": json.dumps(["Strong technical trend/momentum" if t_score >= 4 else "Moderate technical setups", "Low debt/healthy margins" if f_score >= 10 else "Acceptable fundamental score", "Rule-based tactical entry alignment"]),
                     "risks_json": json.dumps(["AI qualitative analysis bypassed due to credit limits", "Market regime risk"]),
@@ -229,15 +252,14 @@ class RecommendationEngine:
                     "news_sentiment": 3.0,
                     "news_json": "[]",
                     "reflection": "System reverted to deterministic mathematical rules due to API failure.",
-                    "tech_layer_snapshot": json.dumps(technicals) if 'technicals' in locals() and isinstance(technicals, dict) else "{}"
+                    "tech_layer_snapshot": sanitized_tech.get("_layer_snapshot")
                 }
                 
                 if save_to_db:
                     self.db.save_recommendation(rec)
                 
-                rec["atr_stop"] = stop_loss
-                rec["atr14"] = atr14
-                rec["tech_layer_snapshot"] = technicals.get("_layer_snapshot") if ('technicals' in locals() and isinstance(technicals, dict) and technicals.get("_layer_snapshot")) else None
+                rec["atr_stop"] = float(stop_loss)
+                rec["atr14"] = float(atr14)
                 
                 return rec
             except Exception as inner_e:

@@ -586,6 +586,64 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // --- IndMoney MCP Integration ---
+    const syncIndMoneyBtn = document.getElementById('sync-indmoney-btn');
+    const indMoneyTokenInput = document.getElementById('indmoney-token-input');
+    const indMoneySuggestionsContainer = document.getElementById('indmoney-suggestions-container');
+    const indMoneyTbody = document.getElementById('indmoney-tbody');
+
+    syncIndMoneyBtn?.addEventListener('click', async () => {
+        const token = indMoneyTokenInput?.value.trim();
+        try {
+            syncIndMoneyBtn.innerHTML = '<i class="spinner" style="width:14px;height:14px;display:inline-block;margin-right:4px;"></i> Syncing...';
+            syncIndMoneyBtn.disabled = true;
+            
+            let url = `${API_URL}/api/indmoney/suggestions`;
+            if (token) {
+                url += `?token=${encodeURIComponent(token)}`;
+            }
+            
+            const res = await fetch(url);
+            const data = await res.json();
+            
+            if (data.status === 'success' && data.data) {
+                indMoneyTbody.innerHTML = '';
+                data.data.forEach(item => {
+                    const tr = document.createElement('tr');
+                    const badge = (item.compass_recommendation === 'BUY' || item.compass_recommendation === 'STRONG BUY') ? 'buy' : 
+                                  (item.compass_recommendation === 'SELL' || item.compass_recommendation === 'AVOID' ? 'sell' : 'hold');
+                    
+                    const actionClass = item.suggested_action.includes('SELL') ? 'color: var(--danger); font-weight: bold;' : 
+                                        item.suggested_action.includes('TAKE') ? 'color: var(--warning); font-weight: bold;' : 
+                                        item.suggested_action.includes('ACCUMULATE') ? 'color: var(--success); font-weight: bold;' : '';
+
+                    tr.innerHTML = `
+                        <td><strong>${item.symbol}</strong></td>
+                        <td>${item.shares}</td>
+                        <td>$${item.entry_price?.toFixed(2)}</td>
+                        <td>$${item.current_price?.toFixed(2)}</td>
+                        <td style="color:${item.pnl_pct >= 0 ? 'var(--success)' : 'var(--danger)'};font-weight:bold;">${item.pnl_pct?.toFixed(2)}%</td>
+                        <td><span class="badge ${badge}">${item.compass_recommendation}</span></td>
+                        <td>${item.compass_conviction}%</td>
+                        <td style="${actionClass}">${item.suggested_action}</td>
+                    `;
+                    indMoneyTbody.appendChild(tr);
+                });
+                
+                indMoneySuggestionsContainer?.classList.remove('hidden');
+            } else {
+                alert('Failed to sync IndMoney holdings: ' + (data.message || 'Unknown error'));
+            }
+        } catch (e) {
+            console.error('IndMoney Sync Error:', e);
+            alert('Error syncing IndMoney holdings.');
+        } finally {
+            syncIndMoneyBtn.innerHTML = '<i data-lucide="refresh-cw" style="width: 14px; height: 14px; display: inline-block; vertical-align: text-bottom; margin-right: 4px;"></i> Sync Holdings';
+            syncIndMoneyBtn.disabled = false;
+            if (window.lucide) window.lucide.createIcons();
+        }
+    });
+
     showView('view-dashboard');
     fetchStats();
     fetchRecommendations();

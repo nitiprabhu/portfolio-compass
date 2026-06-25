@@ -206,6 +206,47 @@
                     <div id="portfolio-heatmap" class="heatmap-container" style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px;">
                         <!-- JS populated tiles -->
                     </div>
+
+                    <!-- IndMoney Integration Section -->
+                    <div class="glass-panel" style="padding: 20px; margin-bottom: 24px; border-top: 3px solid var(--primary); background: rgba(255, 255, 255, 0.01);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                            <div>
+                                <h3 style="margin: 0; font-size: 16px; display: flex; align-items: center; gap: 8px;">
+                                    <i data-lucide="wallet" style="color: var(--primary); width: 18px; height: 18px;"></i> IndMoney MCP Portfolio Sync
+                                </h3>
+                                <p class="subtitle" style="margin: 4px 0 0 0; font-size: 12px; opacity: 0.6;">Enter your session token to load real holdings and get buy/sell suggestions</p>
+                            </div>
+                            <div style="display: flex; gap: 8px; flex: 1; max-width: 450px; min-width: 280px;">
+                                <input type="password" id="indmoney-token-input" class="text-input" placeholder="Enter INDmoney Auth Token (Optional)" style="padding: 8px 12px; font-size: 13px;">
+                                <button class="btn btn-primary" id="sync-indmoney-btn" style="padding: 8px 16px; font-size: 13px; white-space: nowrap;">
+                                    <i data-lucide="refresh-cw" style="width: 14px; height: 14px; display: inline-block; vertical-align: text-bottom; margin-right: 4px;"></i> Sync Holdings
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div id="indmoney-suggestions-container" class="hidden" style="margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 20px;">
+                            <h4 style="margin: 0 0 12px 0; color: var(--primary);">System Suggested Actions</h4>
+                            <div class="table-container">
+                                <table class="data-table" style="font-size: 12px;">
+                                    <thead>
+                                        <tr>
+                                            <th>ASSET</th>
+                                            <th>SHARES</th>
+                                            <th>ENTRY</th>
+                                            <th>CURRENT PRICE</th>
+                                            <th>P&L</th>
+                                            <th>COMPASS REC</th>
+                                            <th>CONVICTION</th>
+                                            <th>SUGGESTED ACTION</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="indmoney-tbody">
+                                        <!-- JS populated -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
                     
                     <div id="loading-state-port" class="loading-state hidden">
                         <div class="spinner"></div>
